@@ -72,11 +72,15 @@ appFw.so 的 .rodata 里有一整族判定文案（0x4315ac0–0x4317f06）：
 另有独立的一层 `T_CONFIRMED_LICENSE_TYPE_4K120P_NOT_AVAILABLE_FILE_FOMRAT_XAVC_*`。
 串搜索：`FL2`/`FL3`/`V90`/`SpeedClass`/`SDR104` 在 appFw.so 中 0 命中。
 
-## 5. 下一步（按风险从低到高）
+## 5. 现状与去向
 
-1. 在 cpapp-b.bin 里定位 `SET_LOOKNAME` / `SET_LUT` 的调用点（ARM32 字面量池反查），
-   确认 look 表的数据布局（类别、名字、LUT/矩阵指针），再判断 A6700 是否已存在被隐藏的 FL2/FL3 槽。
-2. 在 appFw.so 里用 `CAUTION_ID_*TRANSFER_RATE*` 的字符串地址反查 `.data.rel.ro` 指针表，
-   再反查代码，找到“介质速率 → 允许的录制格式”判定函数。
-3. 只有在 1/2 都定位清楚、且能给出**结构守卫**（不认识的字节一律阻断）之后，才考虑新的写窗口。
-   现有 260 扇区窗口不覆盖这两处，绝不能拿它硬写。
+本节最初的三项待办都已有结论，细节在另外两份专题文档里：
+
+1. **CP 的 look / LUT 机制** → `FL2-ROUTE.md`。单元目录（`0xc2a5b0`，19 条）、19 个单元的运行时读数、
+   参数表与 chroma/矩阵布局、真机槽位归属（5=VV2 / 6=PT / 8=FL / 9=SE）都在那里。
+   `SET_LOOKNAME` 在 CP 里只是日志与名字通路；真正驱动画面的是单元 `0x02a40001`（chroma）与
+   `0x02a4000d`（矩阵）。
+2. **卡速判定** → `CARD-SPEED.md`。判定只在主控 appFw.so 里；CP 侧 `TRANSFER_RATE` / `MBPS` / `V90` /
+   `SpeedClass` 全 0 命中。该线已暂停：按 id 立即数反查在原理上不可行（判定端只传档位索引，不传 id）。
+3. **新写窗口** → 仍未做。现有 260 个固定扇区不覆盖 CP/appFw 的新位置，动 flash 之前必须重做 catalog
+   与结构守卫；在那之前所有 CP 实验都走运行时 `cp_write`（RAM，掉电即恢复）。

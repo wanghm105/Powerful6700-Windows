@@ -66,7 +66,7 @@ dist/Powerful6700/Powerful6700.exe
 
 ```bash
 py -3.12 -m venv .venv
-./.venv/Scripts/python.exe -m pytest tests -q        # 17 个用例
+./.venv/Scripts/python.exe -m pytest tests -q        # 37 passed / 1 skipped
 ./.venv/Scripts/python.exe main.py                   # 启动图形界面
 ./.venv/Scripts/python.exe main.py --offline-self-test
 ./.venv/Scripts/python.exe main.py --diagnose
@@ -96,8 +96,8 @@ py -3.12 -m venv .venv
 
 - [docs/FIRMWARE-MAP.md](docs/FIRMWARE-MAP.md) — 分区地图、镜像哈希、只读 dump 命令、WBI blob 名
 - [docs/CP-PARTITION.md](docs/CP-PARTITION.md) — CP 分区（nflasha8）解剖：FAT12 卷、12 个文件、look/LUT 字符串证据
-- [docs/FL2-ROUTE.md](docs/FL2-ROUTE.md) — **FL2/FL3 移植现状**：已确认偏移、真机探测结果、三条路线与阻塞点
-- [docs/CARD-SPEED.md](docs/CARD-SPEED.md) — 「介质速率 → 允许录制格式」判定的静态调查（结论：没有可改的默认档位）
+- [docs/FL2-ROUTE.md](docs/FL2-ROUTE.md) — **FL2/FL3 移植现状**：已确认偏移、19 个 CP 单元读数、真机槽位归属、菜单新增判定不可行、剩余可行方向
+- [docs/CARD-SPEED.md](docs/CARD-SPEED.md) — 「介质速率 → 允许录制格式」判定的静态调查（结论：没有可改的默认档位，判定端只传档位索引）
 - [docs/FL23-INVESTIGATION.md](docs/FL23-INVESTIGATION.md) — 早期调查中间记录（历史，含当时的错误假设）
 - [docs/FEASIBILITY-FL23.md](docs/FEASIBILITY-FL23.md) — 最早的可行性判断（历史）
 - [docs/ROADMAP.md](docs/ROADMAP.md) — 上游功能计划表与本项目的进度

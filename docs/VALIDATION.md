@@ -87,7 +87,32 @@ sha256 040916c1...3a82，zig 0.13.0 / aarch64-freestanding + ld.lld 构建）。
 - 已在本机验证（无相机）：协议编解码、分块循环、偏移/限长、零长度设备提示、
   载荷清单校验、/tmp/jiritsu/../.. 路径穿越拼装 —— tests/test_dump.py 10 个用例，
   全仓 pytest 37 passed / 1 skipped。
-- 未在真机验证：/usr/lib/appFw.so 与 /dev/nflasha15 是否可读、单块 1 MiB 的往返速率、
-  STOP_SENSER 在长读取后的退出确认。
+- 已在真机验证（2026-10-23/24，A6700 + 固件 2.00，全程只读）：
+
+  | 对象 | 结果 |
+  | --- | --- |
+  | `/usr/lib/appFw.so` | 89,027,992 B，已 dump（`firmware/appFw-2.00.so`） |
+  | `/dev/nflasha8`（CP 分区） | 67,108,864 B，17 s，≈3,772 KiB/s，sha256 `3bddcce3…57457dcc` |
+  | `/dev/nflasha5`（WBI） | 314,572,800 B，82 s，≈3,746 KiB/s，sha256 `56e0e220…4eecb2ab` |
+  | 其余 11 个分区 | 全部可读（两轮全分区 dump 已做，镜像在 `firmware/parts/`） |
+  | 长读取后的 `STOP_SENSER` | 每轮都发出并确认，相机正常回到 MSC（`0x0E76`） |
+
+  `/dev/nflasha15`（749,731,840 B，cramfs + gzip）只在开头 4 MB 上做过 peek，未做全量 dump；
+  `appFw.so` 是通过读文件 `/usr/lib/appFw.so` 取得的，不依赖分区 dump。
+  分区表共 14 个可 stat 的 nflashaN（见 `FIRMWARE-MAP.md` §1），上表 2 + 11 = 13 个做过完整 dump。
 - 风险边界：载荷只以 O_RDONLY 打开文件，源码中没有 pwrite64 调用路径；
   主机侧只发 SELECT/READ 与 SET_FILE/EXECUTE，不发送写入器。
+
+## CP 单元读写（研究用，路线 C）
+
+- 读：`tools/cp_read.py` —— pFunc `0x40` + `0x603/0x40` + `struct('<II', key, 1)`，按 `0x8000` 分块，
+  结束包（`0x200` 读、timeout 1000）按 A7C2 的语义处理。真机读到单元 `0x02a40001`（8,192 B，
+  非零 2,815，sha256 `91d5e040…c066c`）与 `0x02a4000d`（28,672 B，非零 8,752，
+  sha256 `64ceb9aa…d9b209`）；`tools/cp_survey.py` 又把 19 个单元全部读出。
+- 写：`tools/cp_write.py` / `tools/cp_patch.py`（`0x603/0x41`）。写入前自动留 `.orig`，写完立刻回读比对，
+  每次结果都是「回读一致 ✅」。
+- 关键行为：CP 是**活的 RAM** —— 发 `STOP_SENSER`、拔插 USB、重新枚举回 `0x0E76` 之后内容仍然保留，
+  只有真正掉电（关机 / 取电池）才回原厂。因此所有探测都不必写回，关机即恢复。
+- 已用这条通路完成的观测（详见 `FL2-ROUTE.md`）：19 个单元批量读取；全部色度归零 → 所有外观变灰；
+  槽 5/6/8/9 分别归零或放大 → 定位到 VV2 / PT / FL / SE；矩阵槽归零 → 只影响饱和度。
+- 未验证：CP 写在大块（28,672 B）上的失败语义与重试边界；两个颜色单元之外的写路径。
