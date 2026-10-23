@@ -1,5 +1,7 @@
 # 构建与依赖
 
+> 依赖已固化为仓库根目录的 [`requirements.txt`](../requirements.txt)，可用 `--no-index --find-links wheelhouse -r requirements.txt` 一次装齐。
+
 ## 为什么不用 pip 装依赖
 
 本机 `pip` 走配置里的阿里云镜像时会长时间挂住（`global.index-url = https://mirrors.aliyun.com/pypi/simple/`），

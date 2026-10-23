@@ -24,13 +24,14 @@ def runlist(diffs):
 
 cpapp = Path("../firmware/cp/cpapp-b.bin").read_bytes()
 JOBS = [
-    ("cpapp-b", "/dev/nflasha8", 0x24C000, cpapp, "../firmware/cp/cpapp-b.now.bin"),
     ("nflasha10", "/dev/nflasha10", 0, Path("../firmware/parts/nflasha10-def.bin").read_bytes(), "../firmware/parts/nflasha10-now.bin"),
+    ("cpapp-b", "/dev/nflasha8", 0x24C000, cpapp, "../firmware/cp/cpapp-b.now.bin"),
     ("nflasha2", "/dev/nflasha2", 0, Path("../firmware/parts/nflasha2-def.bin").read_bytes(), "../firmware/parts/nflasha2-now.bin"),
 ]
+CHUNK = 0x40000
 
 print("waiting for MSC ...", flush=True)
-deadline = time.monotonic() + 300
+deadline = time.monotonic() + 240
 while time.monotonic() < deadline:
     if 0x0E76 in setupapi.present_pids():
         break
@@ -43,12 +44,16 @@ print("MSC ready", flush=True)
 with ServiceSession(progress=lambda m: None) as session:
     for label, dev, off, ref, keep in JOBS:
         t0 = time.monotonic()
-        data = session.read_range(dev, off, len(ref))["data"]
+        parts = []
+        pos = 0
+        while pos < len(ref):
+            n = min(CHUNK, len(ref) - pos)
+            parts.append(session.read_range(dev, off + pos, n)["data"])
+            pos += n
+        data = b"".join(parts)
         diffs = [i for i in range(min(len(data), len(ref))) if data[i] != ref[i]]
-        print("%s %d B %.1fs live=%s ref=%s diff=%d" % (
-            label, len(data), time.monotonic() - t0,
-            hashlib.sha256(data).hexdigest()[:12], hashlib.sha256(ref).hexdigest()[:12], len(diffs)), flush=True)
-        for a, b in runlist(diffs)[:12]:
-            print("  0x%08x..0x%08x len %d" % (a, b, b - a + 1))
+        print("%s %d B %.1fs diff=%d" % (label, len(data), time.monotonic() - t0, len(diffs)), flush=True)
+        for a, b in runlist(diffs)[:10]:
+            print("  0x%08x..0x%08x len %d" % (a, b, b - a + 1), flush=True)
         if diffs:
             Path(keep).write_bytes(data)
