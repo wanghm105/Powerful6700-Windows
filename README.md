@@ -91,7 +91,16 @@ py -3.12 -m venv .venv
 - [docs/BUILD.md](docs/BUILD.md) — 依赖、测试、PyInstaller 打包与产物
 - [docs/VALIDATION.md](docs/VALIDATION.md) — 已离线验证 / 仍需实机验证的边界
 - [docs/UPSTREAM-NOTES.md](docs/UPSTREAM-NOTES.md) — 上游清单哈希过期问题及处理依据
-- [docs/FEASIBILITY-FL23.md](docs/FEASIBILITY-FL23.md) — FL2/FL3 与富士创意外观为什么不在现有能力范围内（只读取证）
+
+研究记录（只读取证，不属于应用运行路径）：
+
+- [docs/FIRMWARE-MAP.md](docs/FIRMWARE-MAP.md) — 分区地图、镜像哈希、只读 dump 命令、WBI blob 名
+- [docs/CP-PARTITION.md](docs/CP-PARTITION.md) — CP 分区（nflasha8）解剖：FAT12 卷、12 个文件、look/LUT 字符串证据
+- [docs/FL2-ROUTE.md](docs/FL2-ROUTE.md) — **FL2/FL3 移植现状**：已确认偏移、真机探测结果、三条路线与阻塞点
+- [docs/CARD-SPEED.md](docs/CARD-SPEED.md) — 「介质速率 → 允许录制格式」判定的静态调查（结论：没有可改的默认档位）
+- [docs/FL23-INVESTIGATION.md](docs/FL23-INVESTIGATION.md) — 早期调查中间记录（历史，含当时的错误假设）
+- [docs/FEASIBILITY-FL23.md](docs/FEASIBILITY-FL23.md) — 最早的可行性判断（历史）
+- [docs/ROADMAP.md](docs/ROADMAP.md) — 上游功能计划表与本项目的进度
 
 ## 许可与声明
 
