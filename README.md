@@ -1,7 +1,7 @@
 # Powerful6700 · Windows
 
-[![release](https://img.shields.io/github/v/release/HAOMIN-Wang1005/Powerful6700-Windows?label=release&color=e0a340)](https://github.com/HAOMIN-Wang1005/Powerful6700-Windows/releases/latest)
-[![platform](https://img.shields.io/badge/platform-Windows%2010%20%2F%2011%20x64-0078d4)](https://github.com/HAOMIN-Wang1005/Powerful6700-Windows/releases/latest)
+[![release](https://img.shields.io/github/v/release/wanghm105/Powerful6700-Windows?label=release&color=e0a340)](https://github.com/wanghm105/Powerful6700-Windows/releases/latest)
+[![platform](https://img.shields.io/badge/platform-Windows%2010%20%2F%2011%20x64-0078d4)](https://github.com/wanghm105/Powerful6700-Windows/releases/latest)
 [![base](https://img.shields.io/badge/based%20on-sony--a6700--powerful%200.2.0-e0a340)](https://github.com/xyzhangxin/sony-a6700-powerful)
 [![license](https://img.shields.io/badge/license-GPL--3.0--only-blue)](LICENSE)
 
@@ -103,7 +103,7 @@
 
 | 系统 | 下载 | 说明 |
 | --- | --- | --- |
-| Windows 10 / 11 x64 | [`Powerful6700-Windows-x64.zip`](https://github.com/HAOMIN-Wang1005/Powerful6700-Windows/releases/latest)（约 40 MB） | 解压即用，绿色版，不需要安装 Python |
+| Windows 10 / 11 x64 | [`Powerful6700-Windows-x64.zip`](https://github.com/wanghm105/Powerful6700-Windows/releases/latest)（约 40 MB） | 解压即用，绿色版，不需要安装 Python |
 
 - SHA-256：`e20e66cb5a577e24914cfd92ee99e2732013b94f94bc470f45bbd585e668cb4e`
 - 首次把相机绑到 WinUSB 需要**管理员权限**，建议右键「以管理员身份运行」。
