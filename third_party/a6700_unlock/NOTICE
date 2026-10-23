@@ -1,0 +1,16 @@
+A6700 Unlock
+Copyright (C) 2026 A6700 Unlock contributors
+SPDX-License-Identifier: GPL-3.0-only
+
+This program is free software: you can redistribute it and/or modify it under
+version 3 of the GNU General Public License as published by the Free Software
+Foundation. This project selects version 3 only, not any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See LICENSE for the full terms.
+
+Third-party files retain their original notices and licenses; see
+THIRD_PARTY_NOTICES.md and usb/reference/sony_pmca/ in the installed package.
+A binary release must be accompanied by equivalent access to the matching
+source archive, including the native sources and build scripts.

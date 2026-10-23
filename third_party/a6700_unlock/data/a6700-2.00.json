@@ -1,0 +1,5914 @@
+{
+  "schema_version": 1,
+  "catalog_id": "a6700-2.00-phase1-offline-v1",
+  "model": "ILCE-6700",
+  "firmware": "2.00",
+  "bundle_version": "0.1.0.dev27",
+  "scope": "offline-known-snapshot-only",
+  "device_write_supported": false,
+  "sector_size": 512,
+  "limitations": [
+    "Only regular decrypted local files; no USB, raw eMMC or live device paths.",
+    "WBI input is exactly the extracted 248376320-byte logical content, not a full partition dump.",
+    "CP input is the extracted 25008128-byte nflasha8 partition image, not a live dump.",
+    "Normalized full-file hashes deliberately reject unrelated runtime/settings changes.",
+    "Known snapshot counter constants are not a general runtime rule evaluator.",
+    "Generated plans contain logical file offsets and are not device write plans.",
+    "Historical feature tests do not establish a new combined USB installation/closure test."
+  ],
+  "features": [
+    {
+      "id": "ftp",
+      "name": "原生 FTP 菜单、开关及设置解锁",
+      "verification": "historical-hardware-tested",
+      "evidence": "docs/FTP解锁复盘与后续功能准备.md",
+      "limits": [
+        "RAW+JPEG 上传及回家联网传输有正向实测",
+        "跨关机队列未全面验证",
+        "回放未传输筛选不在本期范围"
+      ],
+      "available": true
+    },
+    {
+      "id": "shutter",
+      "name": "关机快门帘及静音联动解锁",
+      "verification": "historical-hardware-tested",
+      "evidence": "research/shutter-poweroff-20261017/phase5/README.md",
+      "limits": [
+        "正常关机闭帘、开机释放、设置保存和静音联动有用户实测",
+        "长期可靠性及取电池保持未验证"
+      ],
+      "available": true
+    },
+    {
+      "id": "exposure",
+      "name": "灵活曝光",
+      "verification": "hardware-trial-installed",
+      "evidence": "docs/灵活曝光与快门声音实机验证-20261019.md",
+      "limits": [
+        "2026-10-19 实机写入 App 17＋WBI 39 字节，原生执行与独立回读一致",
+        "菜单已出现且可选；三项独立控制、实际曝光与关机保存已有用户正向反馈",
+        "与快门声音组合、长期稳定性及跨机身一致性未完全验证"
+      ],
+      "available": true
+    },
+    {
+      "id": "sound",
+      "name": "电子快门声音",
+      "verification": "hardware-playback-verified",
+      "evidence": "research/electronic-shutter-sound-20261019/README.md",
+      "limits": [
+        "声音增量与灵活曝光字段不重叠；sound-after-exposure 是验证基线，不是运行时依赖；单独选择声音只改声音字段",
+        "2026-10-20 实机：菜单 4 项正常，电子快门有“克哒”声，“除快门以外”与“关”静音，重启保持由用户确认",
+        "CP 字节位于 /dev/nflasha8 扇区 11932（扇区内 256）；回退由同一字段写回 00，不影响菜单"
+      ],
+      "available": true
+    },
+    {
+      "id": "pixel_shift",
+      "name": "位移多帧合成（Pixel Shift）",
+      "verification": "incomplete-disabled-for-testing",
+      "evidence": "docs/PixelShift触发源与WBI联动-20261020.md",
+      "limits": [
+        "2026-10-20 实机写入 App 3＋WBI 9 字节，8 个扇区",
+        "菜单与合成流程、实际成像和关机保存尚待完整验收",
+        "仅支持当前 sound-after-exposure 基线"
+      ],
+      "available": false,
+      "unavailable_reason": "开发与验证尚未完成，0.1 测试版暂不开放"
+    },
+    {
+      "id": "dynamic_active",
+      "name": "动态增强防抖（Dynamic Active）",
+      "verification": "incomplete-disabled-for-testing",
+      "evidence": "docs/动态增强防抖值支持修复-20261020.md",
+      "limits": [
+        "历史实机写入及独立回读通过，菜单显示和可选择已由用户确认；实际功能仍未完成",
+        "普通录像适用；高帧率、S&Q、镜头开关等原有限制保留",
+        "关闭前请在相机中切回增强或标准；本工具不修改当前防抖设置值",
+        "当前整合版尚未实机安装／关闭验收；录像效果、重启保持的详细对照记录未补齐"
+      ],
+      "available": false,
+      "unavailable_reason": "开发与验证尚未完成，0.1 测试版暂不开放"
+    }
+  ],
+  "images": {
+    "app": {
+      "size": 89027992,
+      "normalized_sha256": "e65fd595052be5d0e98ce8000dfcb94f90a2f8309de70ef140375052009b0ef3",
+      "view": "plaintext-elf-file",
+      "description": "/lib/appFw.so"
+    },
+    "wbi": {
+      "size": 248376320,
+      "normalized_sha256": "bba227d90fb947642618017e109d544069be2687985b6be1f2b84f2766a85885",
+      "view": "decrypted-wbi-logical-content",
+      "description": "WBI2 extracted content including unchanged header"
+    },
+    "cpapp": {
+      "size": 25008128,
+      "normalized_sha256": "f12fa3699da841786b9d55314c7e05c8fa27c2d1b60a0274e40026b4399a91ed",
+      "view": "plaintext-nflasha8-partition-image",
+      "description": "nflasha8 CP application partition containing cpapp-b.bin"
+    }
+  },
+  "reference_projections": {
+    "ftp": {
+      "app": "ffa7d5f21f5d17367dee6b174e4def4f85f62f966be8275ce5589d34cead8762",
+      "wbi": "ff9cde8adf1c3760aef3e8bca39efa84299acd3ff00079e393bffda0b4677d6b"
+    },
+    "all": {
+      "app": "d21706cad2d4340ffea63e340e541c5d5acad3a1fe3b5cb39c7bc751697f80f3",
+      "wbi": "93a58fbd13e40240857bcc9815db2a073f61508d59e047a95e1aa95ad41c49b1"
+    }
+  },
+  "historical_app_only_parent_permission_bytes": 12,
+  "sources": [
+    {
+      "path": "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json",
+      "sha256": "07b2302668c5cd775506bc9bd7e17c64d80fd5c34667dc9caa8f5de609d181d1"
+    },
+    {
+      "path": "samples/A6700-v2.00.ftp-parameter-availability-audit-20261016.json",
+      "sha256": "89fd71b5d3127834411aa83be1d77157992020b02a2b3cf66de2819d548ba72c"
+    },
+    {
+      "path": "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json",
+      "sha256": "7b71604ef6f0a96bd413083bc732afc69f5683a6df8cc87a7d7a84f01156f5ea"
+    },
+    {
+      "path": "research/shutter-poweroff-20261017/phase4/candidate/delta.json",
+      "sha256": "f8c2193d5f0af6e68ad8451640794f113c49124dd8e9370176d23099c2024d3e"
+    },
+    {
+      "path": "extracted/A6700-v2.00/appFw.so.sections.json",
+      "sha256": "a4e29b3ba8de4c9afa745319e042f5b102878decc46315243801a6e557908e68"
+    },
+    {
+      "path": "patches/live-a6700-2.00-ftp-leaves/plan.json",
+      "sha256": "534c79b7a471fffc636378f6960abac45228e6c9c0c679e9536e5921a4e87e0c"
+    },
+    {
+      "path": "patches/live-a6700-2.00-ftp-settings-support/plan.json",
+      "sha256": "73d0eb56946a75cb123522b5e93b3efb7adf1d00a8fdcd0cadbcdbf64ab76dbf"
+    },
+    {
+      "path": "patches/live-a6700-2.00-playback-withdraw/plan.json",
+      "sha256": "ea7519f148d4172c2a612a8a82bd6ef5fece1bf9d38fc9d09674d888d72c6854"
+    },
+    {
+      "path": "patches/feature-trials-20261019/exposure-current/catalog.json",
+      "sha256": "3338cbebc9307a964d1b4ebbb8eec477ca519419d0dce341babbd5f65d41f4f1"
+    },
+    {
+      "path": "patches/feature-trials-20261019/exposure-current/profile.json",
+      "sha256": "747b7c7094aaabda4bac935e78f3e7081414d9551d1b77a4d02b8dabb0986492"
+    },
+    {
+      "path": "patches/feature-trials-20261019/sound-after-exposure/catalog.json",
+      "sha256": "641819d35eaafb58b63eddca9ab381dd73d530fdc5ab8eb7d79159053cee44e8"
+    },
+    {
+      "path": "patches/feature-trials-20261019/sound-after-exposure/profile.json",
+      "sha256": "187782aac9fd3758e115c0ff042cf90fb306bc962b278b7f0952a3ae0cdb862e"
+    },
+    {
+      "path": "patches/feature-trials-20261020/pixel-shift-current/catalog.json",
+      "sha256": "4c5590dc584d956f94aca2b7b068466b588e6704ff77059431bbdbcf0c456914"
+    },
+    {
+      "path": "patches/feature-trials-20261020/pixel-shift-current/profile.json",
+      "sha256": "e5ee2e2fef2b8eb291cd7f34823eba6069e8f7d3c8a8023aeb0d4f8082a1d262"
+    },
+    {
+      "path": "patches/feature-trials-20261020/dynamic-active-gate/catalog.json",
+      "sha256": "2e649623f8b1e1b6daf3ef1f9449adf06a922baf294db2bf1c23cd7fdd918a58"
+    },
+    {
+      "path": "patches/feature-trials-20261020/dynamic-active-gate/profile.json",
+      "sha256": "baa23c1a7eb74497310fb96d105dcd02a5e58cf3f7bd452ca473477d048c756f"
+    },
+    {
+      "path": "patches/feature-trials-20261020/dynamic-active-wbi/catalog.json",
+      "sha256": "a7845a2aad13668f65241487d75490bac74679c50c329910dedd71c77c5e06d4"
+    },
+    {
+      "path": "patches/feature-trials-20261020/dynamic-active-wbi/profile.json",
+      "sha256": "4b113084122ef44fe2f682a38399fd5e70e90767f93f0ac62ac6832610cce6ab"
+    },
+    {
+      "path": "patches/feature-trials-20261020/dynamic-active-value-support/catalog.json",
+      "sha256": "0bc5893a72f08592192b56f06aa1fd8366dda5e2fa8779abbdd9b23b1aeb4c2c"
+    },
+    {
+      "path": "patches/feature-trials-20261020/dynamic-active-value-support/profile.json",
+      "sha256": "93cabbc757e143e44597fdfab2d44587160e17cad9e001f9ac89649d5767bb81"
+    }
+  ],
+  "edits": [
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "app-3f172bc",
+      "image": "app",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 66155196,
+      "purpose": "0x497 model support"
+    },
+    {
+      "disabled": "00",
+      "elf_address": "0x3f17320",
+      "enabled": "01",
+      "feature": "pixel_shift",
+      "id": "edit-ps-001",
+      "image": "app",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 66155300,
+      "purpose": "0x4b5 static model availability"
+    },
+    {
+      "image": "app",
+      "offset": 66155316,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "shutter",
+      "purpose": "model availability initializer",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "elf_address": "0x3f17334",
+      "id": "edit-001"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "app-3f173f4",
+      "image": "app",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 66155508,
+      "purpose": "0x50c model support"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "app-3f173fc",
+      "image": "app",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 66155516,
+      "purpose": "0x50d model support"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "app-3f17404",
+      "image": "app",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 66155524,
+      "purpose": "0x50e model support"
+    },
+    {
+      "image": "app",
+      "offset": 66155812,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP switch 0x5a5 static model support",
+      "sources": [
+        "samples/A6700-v2.00.ftp-parameter-availability-audit-20261016.json"
+      ],
+      "id": "edit-002"
+    },
+    {
+      "image": "app",
+      "offset": 66155820,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a6: setting_ftp_connect_method",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "elf_address": "0x3f1752c",
+      "id": "edit-003"
+    },
+    {
+      "image": "app",
+      "offset": 66155828,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a8: setting_set_server",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "elf_address": "0x3f17534",
+      "id": "edit-004"
+    },
+    {
+      "image": "app",
+      "offset": 66155836,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5aa: setting_auto_ftp_transfer",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "elf_address": "0x3f1753c",
+      "id": "edit-005"
+    },
+    {
+      "image": "app",
+      "offset": 66155844,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ac: setting_raw_jh_trans_trgt",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "elf_address": "0x3f17544",
+      "id": "edit-006"
+    },
+    {
+      "image": "app",
+      "offset": 66155852,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ad: setting_jpeg_jpeg_transfer_img",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "elf_address": "0x3f1754c",
+      "id": "edit-007"
+    },
+    {
+      "image": "app",
+      "offset": 66155860,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ae: setting_heif_heif_transfer_img",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "elf_address": "0x3f17554",
+      "id": "edit-008"
+    },
+    {
+      "image": "app",
+      "offset": 66155868,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5af: setting_transfer_target",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "elf_address": "0x3f1755c",
+      "id": "edit-009"
+    },
+    {
+      "image": "app",
+      "offset": 66155876,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5b0: setting_ftp_power_save",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "elf_address": "0x3f17564",
+      "id": "edit-010"
+    },
+    {
+      "image": "app",
+      "offset": 66156348,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "shutter",
+      "purpose": "model availability initializer",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "elf_address": "0x3f1773c",
+      "id": "edit-011"
+    },
+    {
+      "disabled": "00",
+      "elf_address": "0x3f177f0",
+      "enabled": "01",
+      "feature": "pixel_shift",
+      "id": "edit-ps-002",
+      "image": "app",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 66156532,
+      "purpose": "0x730 static model availability"
+    },
+    {
+      "disabled": "00",
+      "elf_address": "0x3f177f8",
+      "enabled": "01",
+      "feature": "pixel_shift",
+      "id": "edit-ps-003",
+      "image": "app",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 66156540,
+      "purpose": "0x731 static model availability"
+    },
+    {
+      "id": "app-4b5922a",
+      "image": "app",
+      "offset": 79008298,
+      "disabled": "00",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "sound",
+      "purpose": "leaf 0xabe (AUDIO_SIGNALS_ON_ALL) gate pinned to 00: the camera does not persist the fifth option"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "sound",
+      "id": "app-4b592ca",
+      "image": "app",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 79008458,
+      "purpose": "leaf 0xabf (AUDIO_SIGNALS_SHUTTER_OFF (locked)) current-product menu permission"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "sound",
+      "id": "app-4b5936a",
+      "image": "app",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 79008618,
+      "purpose": "leaf 0xac0 (AUDIO_SIGNALS_ONLY_SHUTTER (locked)) current-product menu permission"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "app-4bd5eda",
+      "image": "app",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 79519450,
+      "purpose": "current product column menu permission"
+    },
+    {
+      "image": "app",
+      "offset": 79525154,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "historically validated FTP parent permission column (app-only)",
+      "sources": [
+        "patches/live-a6700-2.00-ftp-leaves/plan.json"
+      ],
+      "id": "edit-012"
+    },
+    {
+      "image": "app",
+      "offset": 79525156,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "historically validated FTP parent permission column (app-only)",
+      "sources": [
+        "patches/live-a6700-2.00-ftp-leaves/plan.json"
+      ],
+      "id": "edit-013"
+    },
+    {
+      "image": "app",
+      "offset": 79525158,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "historically validated FTP parent permission column (app-only)",
+      "sources": [
+        "patches/live-a6700-2.00-ftp-leaves/plan.json"
+      ],
+      "id": "edit-014"
+    },
+    {
+      "image": "app",
+      "offset": 79525160,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP parent menu 0x226 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4be7528",
+      "id": "edit-015"
+    },
+    {
+      "image": "app",
+      "offset": 79525162,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "historically validated FTP parent permission column (app-only)",
+      "sources": [
+        "patches/live-a6700-2.00-ftp-leaves/plan.json"
+      ],
+      "id": "edit-016"
+    },
+    {
+      "image": "app",
+      "offset": 79525164,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "historically validated FTP parent permission column (app-only)",
+      "sources": [
+        "patches/live-a6700-2.00-ftp-leaves/plan.json"
+      ],
+      "id": "edit-017"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "app-4bdbf82",
+      "image": "app",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 79544194,
+      "purpose": "current product column menu permission"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "app-4bdc022",
+      "image": "app",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 79544354,
+      "purpose": "current product column menu permission"
+    },
+    {
+      "image": "app",
+      "offset": 79553170,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x22d current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4bee292",
+      "id": "edit-018"
+    },
+    {
+      "image": "app",
+      "offset": 79555472,
+      "disabled": "0000",
+      "enabled": "0100",
+      "known_values": [
+        "0000",
+        "0100"
+      ],
+      "feature": "shutter",
+      "purpose": "current product menu permission",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "elf_address": "0x4beeb90",
+      "id": "edit-019"
+    },
+    {
+      "image": "app",
+      "offset": 79619890,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x227 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4bfe732",
+      "id": "edit-020"
+    },
+    {
+      "image": "app",
+      "offset": 79620066,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x22f current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4bfe7e2",
+      "id": "edit-021"
+    },
+    {
+      "image": "app",
+      "offset": 79687962,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x23c current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c0f11a",
+      "id": "edit-022"
+    },
+    {
+      "image": "app",
+      "offset": 79699866,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x903 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c11f9a",
+      "id": "edit-023"
+    },
+    {
+      "image": "app",
+      "offset": 79700026,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x904 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c1203a",
+      "id": "edit-024"
+    },
+    {
+      "image": "app",
+      "offset": 79731922,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x924 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c19cd2",
+      "id": "edit-025"
+    },
+    {
+      "image": "app",
+      "offset": 79732082,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x925 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c19d72",
+      "id": "edit-026"
+    },
+    {
+      "image": "app",
+      "offset": 79732242,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x90a current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c19e12",
+      "id": "edit-027"
+    },
+    {
+      "image": "app",
+      "offset": 79732402,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x90b current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c19eb2",
+      "id": "edit-028"
+    },
+    {
+      "image": "app",
+      "offset": 79732562,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x90c current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c19f52",
+      "id": "edit-029"
+    },
+    {
+      "image": "app",
+      "offset": 79732722,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x90d current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c19ff2",
+      "id": "edit-030"
+    },
+    {
+      "image": "app",
+      "offset": 79732882,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x90e current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c1a092",
+      "id": "edit-031"
+    },
+    {
+      "image": "app",
+      "offset": 79733042,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x90f current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c1a132",
+      "id": "edit-032"
+    },
+    {
+      "image": "app",
+      "offset": 79733202,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x910 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c1a1d2",
+      "id": "edit-033"
+    },
+    {
+      "image": "app",
+      "offset": 79733362,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x911 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c1a272",
+      "id": "edit-034"
+    },
+    {
+      "image": "app",
+      "offset": 79733522,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x912 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c1a312",
+      "id": "edit-035"
+    },
+    {
+      "image": "app",
+      "offset": 79737250,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x236 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c1b1a2",
+      "id": "edit-036"
+    },
+    {
+      "image": "app",
+      "offset": 79761970,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x918 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c21232",
+      "id": "edit-037"
+    },
+    {
+      "image": "app",
+      "offset": 79762130,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x919 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c212d2",
+      "id": "edit-038"
+    },
+    {
+      "image": "app",
+      "offset": 79765154,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x235 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c21ea2",
+      "id": "edit-039"
+    },
+    {
+      "image": "app",
+      "offset": 79765330,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x228 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c21f52",
+      "id": "edit-040"
+    },
+    {
+      "image": "app",
+      "offset": 79765506,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x238 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c22002",
+      "id": "edit-041"
+    },
+    {
+      "image": "app",
+      "offset": 79784910,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "historically validated FTP parent permission column (app-only)",
+      "sources": [
+        "patches/live-a6700-2.00-ftp-leaves/plan.json"
+      ],
+      "id": "edit-042"
+    },
+    {
+      "image": "app",
+      "offset": 79784912,
+      "disabled": "00",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP parent menu 0x262 current-model permission; parent:0x262: hide duplicate blank FTP parent",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json",
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c26bd0",
+      "id": "edit-043"
+    },
+    {
+      "image": "app",
+      "offset": 79784914,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "historically validated FTP parent permission column (app-only)",
+      "sources": [
+        "patches/live-a6700-2.00-ftp-leaves/plan.json"
+      ],
+      "id": "edit-044"
+    },
+    {
+      "image": "app",
+      "offset": 79784916,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "historically validated FTP parent permission column (app-only)",
+      "sources": [
+        "patches/live-a6700-2.00-ftp-leaves/plan.json"
+      ],
+      "id": "edit-045"
+    },
+    {
+      "image": "app",
+      "offset": 79784918,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "historically validated FTP parent permission column (app-only)",
+      "sources": [
+        "patches/live-a6700-2.00-ftp-leaves/plan.json"
+      ],
+      "id": "edit-046"
+    },
+    {
+      "image": "app",
+      "offset": 79784920,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "historically validated FTP parent permission column (app-only)",
+      "sources": [
+        "patches/live-a6700-2.00-ftp-leaves/plan.json"
+      ],
+      "id": "edit-047"
+    },
+    {
+      "image": "app",
+      "offset": 79784922,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "historically validated FTP parent permission column (app-only)",
+      "sources": [
+        "patches/live-a6700-2.00-ftp-leaves/plan.json"
+      ],
+      "id": "edit-048"
+    },
+    {
+      "image": "app",
+      "offset": 79784924,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "historically validated FTP parent permission column (app-only)",
+      "sources": [
+        "patches/live-a6700-2.00-ftp-leaves/plan.json"
+      ],
+      "id": "edit-049"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "app-4c17010",
+      "image": "app",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 79786000,
+      "purpose": "current product column menu permission"
+    },
+    {
+      "image": "app",
+      "offset": 79789010,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x916 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c27bd2",
+      "id": "edit-050"
+    },
+    {
+      "image": "app",
+      "offset": 79789170,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x917 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c27c72",
+      "id": "edit-051"
+    },
+    {
+      "image": "app",
+      "offset": 79803394,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x906 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c2b402",
+      "id": "edit-052"
+    },
+    {
+      "image": "app",
+      "offset": 79803554,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x907 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c2b4a2",
+      "id": "edit-053"
+    },
+    {
+      "image": "app",
+      "offset": 79803874,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x909 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c2b5e2",
+      "id": "edit-054"
+    },
+    {
+      "image": "app",
+      "offset": 79804034,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x91f current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c2b682",
+      "id": "edit-055"
+    },
+    {
+      "image": "app",
+      "offset": 79804194,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x920 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c2b722",
+      "id": "edit-056"
+    },
+    {
+      "image": "app",
+      "offset": 79804354,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x91d current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c2b7c2",
+      "id": "edit-057"
+    },
+    {
+      "image": "app",
+      "offset": 79804514,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x91e current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c2b862",
+      "id": "edit-058"
+    },
+    {
+      "image": "app",
+      "offset": 79806594,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x93e current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c2c082",
+      "id": "edit-059"
+    },
+    {
+      "image": "app",
+      "offset": 79806754,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x93f current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c2c122",
+      "id": "edit-060"
+    },
+    {
+      "image": "app",
+      "offset": 79806914,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x93c current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c2c1c2",
+      "id": "edit-061"
+    },
+    {
+      "image": "app",
+      "offset": 79807074,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x93d current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c2c262",
+      "id": "edit-062"
+    },
+    {
+      "image": "app",
+      "offset": 79807234,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x934 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c2c302",
+      "id": "edit-063"
+    },
+    {
+      "image": "app",
+      "offset": 79807394,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x935 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c2c3a2",
+      "id": "edit-064"
+    },
+    {
+      "image": "app",
+      "offset": 79807554,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x936 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c2c442",
+      "id": "edit-065"
+    },
+    {
+      "image": "app",
+      "offset": 79807714,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x937 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c2c4e2",
+      "id": "edit-066"
+    },
+    {
+      "image": "app",
+      "offset": 79812850,
+      "disabled": "0000",
+      "enabled": "0100",
+      "known_values": [
+        "0000",
+        "0100"
+      ],
+      "feature": "shutter",
+      "purpose": "current product menu permission",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "elf_address": "0x4c2d8f2",
+      "id": "edit-067"
+    },
+    {
+      "image": "app",
+      "offset": 79813554,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x23b current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c2dbb2",
+      "id": "edit-068"
+    },
+    {
+      "image": "app",
+      "offset": 79822746,
+      "disabled": "0000",
+      "enabled": "0100",
+      "known_values": [
+        "0000",
+        "0100"
+      ],
+      "feature": "shutter",
+      "purpose": "current product menu permission",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "elf_address": "0x4c2ff9a",
+      "id": "edit-069"
+    },
+    {
+      "image": "app",
+      "offset": 79822906,
+      "disabled": "0000",
+      "enabled": "0100",
+      "known_values": [
+        "0000",
+        "0100"
+      ],
+      "feature": "shutter",
+      "purpose": "current product menu permission",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "elf_address": "0x4c3003a",
+      "id": "edit-070"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "app-4c2021a",
+      "image": "app",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 79823386,
+      "purpose": "current product column menu permission"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "app-4c202ba",
+      "image": "app",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 79823546,
+      "purpose": "current product column menu permission"
+    },
+    {
+      "image": "app",
+      "offset": 79831386,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x932 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c3215a",
+      "id": "edit-071"
+    },
+    {
+      "image": "app",
+      "offset": 79831546,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x933 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c321fa",
+      "id": "edit-072"
+    },
+    {
+      "image": "app",
+      "offset": 79843370,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x234 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c3502a",
+      "id": "edit-073"
+    },
+    {
+      "image": "app",
+      "offset": 79843722,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x23a current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c3518a",
+      "id": "edit-074"
+    },
+    {
+      "image": "app",
+      "offset": 79843898,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x239 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c3523a",
+      "id": "edit-075"
+    },
+    {
+      "image": "app",
+      "offset": 79848122,
+      "disabled": "0000",
+      "enabled": "0100",
+      "known_values": [
+        "0000",
+        "0100"
+      ],
+      "feature": "shutter",
+      "purpose": "current product menu permission",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "elf_address": "0x4c362ba",
+      "id": "edit-076"
+    },
+    {
+      "image": "app",
+      "offset": 79855946,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x938 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c3814a",
+      "id": "edit-077"
+    },
+    {
+      "image": "app",
+      "offset": 79856106,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x939 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c381ea",
+      "id": "edit-078"
+    },
+    {
+      "image": "app",
+      "offset": 79856266,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x93a current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c3828a",
+      "id": "edit-079"
+    },
+    {
+      "image": "app",
+      "offset": 79856426,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x93b current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c3832a",
+      "id": "edit-080"
+    },
+    {
+      "image": "app",
+      "offset": 79856586,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x92f current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c383ca",
+      "id": "edit-081"
+    },
+    {
+      "image": "app",
+      "offset": 79856746,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x930 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c3846a",
+      "id": "edit-082"
+    },
+    {
+      "image": "app",
+      "offset": 79856906,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x931 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c3850a",
+      "id": "edit-083"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "app-4c2b5ba",
+      "image": "app",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 79869370,
+      "purpose": "current product column menu permission"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "app-4c2b65a",
+      "image": "app",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 79869530,
+      "purpose": "current product column menu permission"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "app-4c2b79a",
+      "image": "app",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 79869850,
+      "purpose": "current product column menu permission"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "app-4c2b83a",
+      "image": "app",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 79870010,
+      "purpose": "current product column menu permission"
+    },
+    {
+      "image": "app",
+      "offset": 79878490,
+      "disabled": "0000",
+      "enabled": "0100",
+      "known_values": [
+        "0000",
+        "0100"
+      ],
+      "feature": "shutter",
+      "purpose": "current product menu permission",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "elf_address": "0x4c3d95a",
+      "id": "edit-084"
+    },
+    {
+      "image": "app",
+      "offset": 79878650,
+      "disabled": "0000",
+      "enabled": "0100",
+      "known_values": [
+        "0000",
+        "0100"
+      ],
+      "feature": "shutter",
+      "purpose": "current product menu permission",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "elf_address": "0x4c3d9fa",
+      "id": "edit-085"
+    },
+    {
+      "image": "app",
+      "offset": 79883322,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x237 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c3ec3a",
+      "id": "edit-086"
+    },
+    {
+      "image": "app",
+      "offset": 79891034,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x913 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c40a5a",
+      "id": "edit-087"
+    },
+    {
+      "image": "app",
+      "offset": 79891194,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x914 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c40afa",
+      "id": "edit-088"
+    },
+    {
+      "image": "app",
+      "offset": 79891354,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x915 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c40b9a",
+      "id": "edit-089"
+    },
+    {
+      "image": "app",
+      "offset": 79891514,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x921 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c40c3a",
+      "id": "edit-090"
+    },
+    {
+      "image": "app",
+      "offset": 79891674,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x922 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c40cda",
+      "id": "edit-091"
+    },
+    {
+      "image": "app",
+      "offset": 79891834,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x923 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c40d7a",
+      "id": "edit-092"
+    },
+    {
+      "image": "app",
+      "offset": 79894394,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x928 current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c4177a",
+      "id": "edit-093"
+    },
+    {
+      "image": "app",
+      "offset": 79894874,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x92b current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c4195a",
+      "id": "edit-094"
+    },
+    {
+      "image": "app",
+      "offset": 79895034,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x92c current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c419fa",
+      "id": "edit-095"
+    },
+    {
+      "image": "app",
+      "offset": 79911306,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x91a current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c4598a",
+      "id": "edit-096"
+    },
+    {
+      "image": "app",
+      "offset": 79911466,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x91b current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c45a2a",
+      "id": "edit-097"
+    },
+    {
+      "image": "app",
+      "offset": 79911626,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x91c current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c45aca",
+      "id": "edit-098"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "app-4c39ada",
+      "image": "app",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 79928026,
+      "purpose": "current product column menu permission"
+    },
+    {
+      "image": "app",
+      "offset": 79978346,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x22e current-model permission",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "elf_address": "0x4c55f6a",
+      "id": "edit-099"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "app-4c4910a",
+      "image": "app",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 79991050,
+      "purpose": "current product column menu permission"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "app-4c51dda",
+      "image": "app",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 80027098,
+      "purpose": "current product column menu permission"
+    },
+    {
+      "id": "cp-5d3900",
+      "image": "cpapp",
+      "offset": 6109440,
+      "disabled": "00",
+      "enabled": "03",
+      "known_values": [
+        "00",
+        "03"
+      ],
+      "feature": "sound",
+      "purpose": "CP exposure-start sound mark: cpapp-b.bin 0x387900 movne r1,#0 -> movne r1,#3 (A7C II reference)"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "wbi-86b99c",
+      "image": "wbi",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 8829340,
+      "purpose": "0x497 runtime support"
+    },
+    {
+      "disabled": "02",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "wbi-cb26b8",
+      "image": "wbi",
+      "known_values": [
+        "02",
+        "01"
+      ],
+      "offset": 13313720,
+      "purpose": "remove one model-unavailable contribution"
+    },
+    {
+      "disabled": "02000000",
+      "enabled": "01000000",
+      "feature": "pixel_shift",
+      "id": "edit-ps-005",
+      "image": "wbi",
+      "known_values": [
+        "01000000",
+        "02000000"
+      ],
+      "offset": 13314832,
+      "purpose": "0x214: remove one unavailable contribution at 0x214",
+      "virtual_address": "0x7f7d35b910"
+    },
+    {
+      "disabled": "01",
+      "enabled": "00",
+      "feature": "exposure",
+      "id": "wbi-10c42dd",
+      "image": "wbi",
+      "known_values": [
+        "01",
+        "00"
+      ],
+      "offset": 17580765,
+      "purpose": "native output after count update"
+    },
+    {
+      "disabled": "01",
+      "enabled": "00",
+      "feature": "exposure",
+      "id": "wbi-10c42de",
+      "image": "wbi",
+      "known_values": [
+        "01",
+        "00"
+      ],
+      "offset": 17580766,
+      "purpose": "native output after count update"
+    },
+    {
+      "disabled": "01",
+      "enabled": "00",
+      "feature": "exposure",
+      "id": "wbi-10c42df",
+      "image": "wbi",
+      "known_values": [
+        "01",
+        "00"
+      ],
+      "offset": 17580767,
+      "purpose": "native output after count update"
+    },
+    {
+      "disabled": "01",
+      "enabled": "00",
+      "feature": "pixel_shift",
+      "id": "edit-ps-009",
+      "image": "wbi",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 17581329,
+      "purpose": "0x214: OFF option flag after its count reaches zero",
+      "virtual_address": "0x7f7d39c311"
+    },
+    {
+      "image": "wbi",
+      "offset": 17581428,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "shutter",
+      "purpose": "native availability flag after decrement",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "virtual_address": "0x7f7d39c374",
+      "id": "edit-100"
+    },
+    {
+      "image": "wbi",
+      "offset": 17581429,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "shutter",
+      "purpose": "native availability flag after decrement",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "virtual_address": "0x7f7d39c375",
+      "id": "edit-101"
+    },
+    {
+      "image": "wbi",
+      "offset": 17581430,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "shutter",
+      "purpose": "native availability flag after decrement",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "virtual_address": "0x7f7d39c376",
+      "id": "edit-102"
+    },
+    {
+      "disabled": "01",
+      "enabled": "00",
+      "feature": "exposure",
+      "id": "wbi-10c4c63",
+      "image": "wbi",
+      "known_values": [
+        "01",
+        "00"
+      ],
+      "offset": 17583203,
+      "purpose": "native output after count update"
+    },
+    {
+      "disabled": "01",
+      "enabled": "00",
+      "feature": "exposure",
+      "id": "wbi-10c4c73",
+      "image": "wbi",
+      "known_values": [
+        "01",
+        "00"
+      ],
+      "offset": 17583219,
+      "purpose": "native output after count update"
+    },
+    {
+      "disabled": "01",
+      "enabled": "00",
+      "feature": "exposure",
+      "id": "wbi-10c4c83",
+      "image": "wbi",
+      "known_values": [
+        "01",
+        "00"
+      ],
+      "offset": 17583235,
+      "purpose": "native output after count update"
+    },
+    {
+      "id": "wbi-245442a",
+      "image": "wbi",
+      "offset": 38093866,
+      "disabled": "00",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "sound",
+      "purpose": "leaf 0xabe (AUDIO_SIGNALS_ON_ALL) gate pinned to 00: the camera does not persist the fifth option"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "sound",
+      "id": "wbi-24544ca",
+      "image": "wbi",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 38094026,
+      "purpose": "leaf 0xabf (AUDIO_SIGNALS_SHUTTER_OFF (locked)) current-product menu permission"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "sound",
+      "id": "wbi-245456a",
+      "image": "wbi",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 38094186,
+      "purpose": "leaf 0xac0 (AUDIO_SIGNALS_ONLY_SHUTTER (locked)) current-product menu permission"
+    },
+    {
+      "disabled": "0000",
+      "enabled": "0100",
+      "feature": "pixel_shift",
+      "id": "edit-ps-010",
+      "image": "wbi",
+      "known_values": [
+        "0000",
+        "0100"
+      ],
+      "offset": 38666196,
+      "purpose": "0x820: menu 0x820 current product-column permission",
+      "virtual_address": "0x7f79219dd4"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "wbi-25200da",
+      "image": "wbi",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 38928602,
+      "purpose": "current product column menu permission saved static copy"
+    },
+    {
+      "image": "wbi",
+      "offset": 38934312,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP parent menu 0x226 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4be7528",
+      "id": "edit-103"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "wbi-2536182",
+      "image": "wbi",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 39018882,
+      "purpose": "current product column menu permission saved static copy"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "wbi-2536222",
+      "image": "wbi",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 39019042,
+      "purpose": "current product column menu permission saved static copy"
+    },
+    {
+      "image": "wbi",
+      "offset": 39027858,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x22d current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4bee292",
+      "id": "edit-104"
+    },
+    {
+      "image": "wbi",
+      "offset": 39030160,
+      "disabled": "0000",
+      "enabled": "0100",
+      "known_values": [
+        "0000",
+        "0100"
+      ],
+      "feature": "shutter",
+      "purpose": "resident static copy: current product menu permission",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "virtual_address": "0x7f79253b90",
+      "id": "edit-105"
+    },
+    {
+      "image": "wbi",
+      "offset": 39094578,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x227 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4bfe732",
+      "id": "edit-106"
+    },
+    {
+      "image": "wbi",
+      "offset": 39094754,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x22f current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4bfe7e2",
+      "id": "edit-107"
+    },
+    {
+      "image": "wbi",
+      "offset": 39277114,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x904 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c1203a",
+      "id": "edit-108"
+    },
+    {
+      "image": "wbi",
+      "offset": 39285146,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x903 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c11f9a",
+      "id": "edit-109"
+    },
+    {
+      "image": "wbi",
+      "offset": 39289626,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x23c current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c0f11a",
+      "id": "edit-110"
+    },
+    {
+      "image": "wbi",
+      "offset": 39341778,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x924 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c19cd2",
+      "id": "edit-111"
+    },
+    {
+      "image": "wbi",
+      "offset": 39341938,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x925 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c19d72",
+      "id": "edit-112"
+    },
+    {
+      "image": "wbi",
+      "offset": 39342098,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x90a current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c19e12",
+      "id": "edit-113"
+    },
+    {
+      "image": "wbi",
+      "offset": 39342258,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x90b current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c19eb2",
+      "id": "edit-114"
+    },
+    {
+      "image": "wbi",
+      "offset": 39342418,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x90c current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c19f52",
+      "id": "edit-115"
+    },
+    {
+      "image": "wbi",
+      "offset": 39342578,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x90d current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c19ff2",
+      "id": "edit-116"
+    },
+    {
+      "image": "wbi",
+      "offset": 39342738,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x90e current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c1a092",
+      "id": "edit-117"
+    },
+    {
+      "image": "wbi",
+      "offset": 39342898,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x90f current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c1a132",
+      "id": "edit-118"
+    },
+    {
+      "image": "wbi",
+      "offset": 39343058,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x910 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c1a1d2",
+      "id": "edit-119"
+    },
+    {
+      "image": "wbi",
+      "offset": 39343218,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x911 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c1a272",
+      "id": "edit-120"
+    },
+    {
+      "image": "wbi",
+      "offset": 39343378,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x912 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c1a312",
+      "id": "edit-121"
+    },
+    {
+      "image": "wbi",
+      "offset": 39347106,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x236 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c1b1a2",
+      "id": "edit-122"
+    },
+    {
+      "image": "wbi",
+      "offset": 39371826,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x918 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c21232",
+      "id": "edit-123"
+    },
+    {
+      "image": "wbi",
+      "offset": 39371986,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x919 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c212d2",
+      "id": "edit-124"
+    },
+    {
+      "image": "wbi",
+      "offset": 39375010,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x235 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c21ea2",
+      "id": "edit-125"
+    },
+    {
+      "image": "wbi",
+      "offset": 39375186,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x228 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c21f52",
+      "id": "edit-126"
+    },
+    {
+      "image": "wbi",
+      "offset": 39375362,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x238 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c22002",
+      "id": "edit-127"
+    },
+    {
+      "image": "wbi",
+      "offset": 39394768,
+      "disabled": "00",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP parent menu 0x262 current-model permission in snapshot; parent:0x262: hide duplicate blank FTP parent",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json",
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c26bd0",
+      "id": "edit-128"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "wbi-2592210",
+      "image": "wbi",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 39395856,
+      "purpose": "current product column menu permission saved static copy"
+    },
+    {
+      "image": "wbi",
+      "offset": 39398866,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x916 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c27bd2",
+      "id": "edit-129"
+    },
+    {
+      "image": "wbi",
+      "offset": 39399026,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x917 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c27c72",
+      "id": "edit-130"
+    },
+    {
+      "image": "wbi",
+      "offset": 39471858,
+      "disabled": "0000",
+      "enabled": "0100",
+      "known_values": [
+        "0000",
+        "0100"
+      ],
+      "feature": "shutter",
+      "purpose": "resident static copy: current product menu permission",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "virtual_address": "0x7f792928f2",
+      "id": "edit-131"
+    },
+    {
+      "image": "wbi",
+      "offset": 39472562,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x23b current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c2dbb2",
+      "id": "edit-132"
+    },
+    {
+      "image": "wbi",
+      "offset": 39473794,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x93e current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c2c082",
+      "id": "edit-133"
+    },
+    {
+      "image": "wbi",
+      "offset": 39473954,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x93f current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c2c122",
+      "id": "edit-134"
+    },
+    {
+      "image": "wbi",
+      "offset": 39474114,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x93c current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c2c1c2",
+      "id": "edit-135"
+    },
+    {
+      "image": "wbi",
+      "offset": 39474274,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x93d current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c2c262",
+      "id": "edit-136"
+    },
+    {
+      "image": "wbi",
+      "offset": 39474434,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x934 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c2c302",
+      "id": "edit-137"
+    },
+    {
+      "image": "wbi",
+      "offset": 39474594,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x935 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c2c3a2",
+      "id": "edit-138"
+    },
+    {
+      "image": "wbi",
+      "offset": 39474754,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x936 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c2c442",
+      "id": "edit-139"
+    },
+    {
+      "image": "wbi",
+      "offset": 39474914,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x937 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c2c4e2",
+      "id": "edit-140"
+    },
+    {
+      "image": "wbi",
+      "offset": 39478786,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x906 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c2b402",
+      "id": "edit-141"
+    },
+    {
+      "image": "wbi",
+      "offset": 39478946,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x907 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c2b4a2",
+      "id": "edit-142"
+    },
+    {
+      "image": "wbi",
+      "offset": 39479266,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x909 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c2b5e2",
+      "id": "edit-143"
+    },
+    {
+      "image": "wbi",
+      "offset": 39479426,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x91f current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c2b682",
+      "id": "edit-144"
+    },
+    {
+      "image": "wbi",
+      "offset": 39479586,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x920 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c2b722",
+      "id": "edit-145"
+    },
+    {
+      "image": "wbi",
+      "offset": 39479746,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x91d current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c2b7c2",
+      "id": "edit-146"
+    },
+    {
+      "image": "wbi",
+      "offset": 39479906,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x91e current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c2b862",
+      "id": "edit-147"
+    },
+    {
+      "image": "wbi",
+      "offset": 39498138,
+      "disabled": "0000",
+      "enabled": "0100",
+      "known_values": [
+        "0000",
+        "0100"
+      ],
+      "feature": "shutter",
+      "purpose": "resident static copy: current product menu permission",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "virtual_address": "0x7f79294f9a",
+      "id": "edit-148"
+    },
+    {
+      "image": "wbi",
+      "offset": 39498298,
+      "disabled": "0000",
+      "enabled": "0100",
+      "known_values": [
+        "0000",
+        "0100"
+      ],
+      "feature": "shutter",
+      "purpose": "resident static copy: current product menu permission",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "virtual_address": "0x7f7929503a",
+      "id": "edit-149"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "wbi-25ab41a",
+      "image": "wbi",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 39498778,
+      "purpose": "current product column menu permission saved static copy"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "wbi-25ab4ba",
+      "image": "wbi",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 39498938,
+      "purpose": "current product column menu permission saved static copy"
+    },
+    {
+      "image": "wbi",
+      "offset": 39506778,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x932 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c3215a",
+      "id": "edit-150"
+    },
+    {
+      "image": "wbi",
+      "offset": 39506938,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x933 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c321fa",
+      "id": "edit-151"
+    },
+    {
+      "image": "wbi",
+      "offset": 39518762,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x234 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c3502a",
+      "id": "edit-152"
+    },
+    {
+      "image": "wbi",
+      "offset": 39519114,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x23a current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c3518a",
+      "id": "edit-153"
+    },
+    {
+      "image": "wbi",
+      "offset": 39519290,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x239 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c3523a",
+      "id": "edit-154"
+    },
+    {
+      "image": "wbi",
+      "offset": 39523514,
+      "disabled": "0000",
+      "enabled": "0100",
+      "known_values": [
+        "0000",
+        "0100"
+      ],
+      "feature": "shutter",
+      "purpose": "resident static copy: current product menu permission",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "virtual_address": "0x7f7929b2ba",
+      "id": "edit-155"
+    },
+    {
+      "image": "wbi",
+      "offset": 39531338,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x938 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c3814a",
+      "id": "edit-156"
+    },
+    {
+      "image": "wbi",
+      "offset": 39531498,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x939 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c381ea",
+      "id": "edit-157"
+    },
+    {
+      "image": "wbi",
+      "offset": 39531658,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x93a current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c3828a",
+      "id": "edit-158"
+    },
+    {
+      "image": "wbi",
+      "offset": 39531818,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x93b current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c3832a",
+      "id": "edit-159"
+    },
+    {
+      "image": "wbi",
+      "offset": 39531978,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x92f current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c383ca",
+      "id": "edit-160"
+    },
+    {
+      "image": "wbi",
+      "offset": 39532138,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x930 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c3846a",
+      "id": "edit-161"
+    },
+    {
+      "image": "wbi",
+      "offset": 39532298,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x931 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c3850a",
+      "id": "edit-162"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "wbi-25b67ba",
+      "image": "wbi",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 39544762,
+      "purpose": "current product column menu permission saved static copy"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "wbi-25b685a",
+      "image": "wbi",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 39544922,
+      "purpose": "current product column menu permission saved static copy"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "wbi-25b699a",
+      "image": "wbi",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 39545242,
+      "purpose": "current product column menu permission saved static copy"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "wbi-25b6a3a",
+      "image": "wbi",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 39545402,
+      "purpose": "current product column menu permission saved static copy"
+    },
+    {
+      "image": "wbi",
+      "offset": 39553882,
+      "disabled": "0000",
+      "enabled": "0100",
+      "known_values": [
+        "0000",
+        "0100"
+      ],
+      "feature": "shutter",
+      "purpose": "resident static copy: current product menu permission",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "virtual_address": "0x7f792a295a",
+      "id": "edit-163"
+    },
+    {
+      "image": "wbi",
+      "offset": 39554042,
+      "disabled": "0000",
+      "enabled": "0100",
+      "known_values": [
+        "0000",
+        "0100"
+      ],
+      "feature": "shutter",
+      "purpose": "resident static copy: current product menu permission",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "virtual_address": "0x7f792a29fa",
+      "id": "edit-164"
+    },
+    {
+      "image": "wbi",
+      "offset": 39558714,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x237 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c3ec3a",
+      "id": "edit-165"
+    },
+    {
+      "image": "wbi",
+      "offset": 39566426,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x913 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c40a5a",
+      "id": "edit-166"
+    },
+    {
+      "image": "wbi",
+      "offset": 39566586,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x914 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c40afa",
+      "id": "edit-167"
+    },
+    {
+      "image": "wbi",
+      "offset": 39566746,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x915 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c40b9a",
+      "id": "edit-168"
+    },
+    {
+      "image": "wbi",
+      "offset": 39566906,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x921 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c40c3a",
+      "id": "edit-169"
+    },
+    {
+      "image": "wbi",
+      "offset": 39567066,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x922 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c40cda",
+      "id": "edit-170"
+    },
+    {
+      "image": "wbi",
+      "offset": 39567226,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x923 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c40d7a",
+      "id": "edit-171"
+    },
+    {
+      "image": "wbi",
+      "offset": 39569786,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x928 current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c4177a",
+      "id": "edit-172"
+    },
+    {
+      "image": "wbi",
+      "offset": 39570266,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x92b current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c4195a",
+      "id": "edit-173"
+    },
+    {
+      "image": "wbi",
+      "offset": 39570426,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x92c current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c419fa",
+      "id": "edit-174"
+    },
+    {
+      "image": "wbi",
+      "offset": 39586698,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x91a current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c4598a",
+      "id": "edit-175"
+    },
+    {
+      "image": "wbi",
+      "offset": 39586858,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x91b current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c45a2a",
+      "id": "edit-176"
+    },
+    {
+      "image": "wbi",
+      "offset": 39587018,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP leaf menu 0x91c current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c45aca",
+      "id": "edit-177"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "wbi-25c4cda",
+      "image": "wbi",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 39603418,
+      "purpose": "current product column menu permission saved static copy"
+    },
+    {
+      "image": "wbi",
+      "offset": 39719274,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP child menu 0x22e current-model permission in snapshot",
+      "sources": [
+        "samples/A6700-v2.00.wbi-minimal-permission-manifest-20261016.json"
+      ],
+      "virtual_address": "0x4c55f6a",
+      "id": "edit-178"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "wbi-25f8fda",
+      "image": "wbi",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 39817178,
+      "purpose": "current product column menu permission saved static copy"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "wbi-260030a",
+      "image": "wbi",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 39846666,
+      "purpose": "current product column menu permission saved static copy"
+    },
+    {
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "feature": "pixel_shift",
+      "id": "edit-ps-006",
+      "image": "wbi",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "offset": 121290092,
+      "purpose": "0x214: remove one unavailable contribution at 0x22ab",
+      "virtual_address": "0x7f7d363b6c"
+    },
+    {
+      "disabled": "02000000",
+      "enabled": "01000000",
+      "feature": "pixel_shift",
+      "id": "edit-ps-007",
+      "image": "wbi",
+      "known_values": [
+        "01000000",
+        "02000000"
+      ],
+      "offset": 121290096,
+      "purpose": "0x214: remove one unavailable contribution at 0x22ac",
+      "virtual_address": "0x7f7d363b70"
+    },
+    {
+      "disabled": "02000000",
+      "enabled": "01000000",
+      "feature": "pixel_shift",
+      "id": "edit-ps-008",
+      "image": "wbi",
+      "known_values": [
+        "01000000",
+        "02000000"
+      ],
+      "offset": 121290100,
+      "purpose": "0x214: remove one unavailable contribution at 0x22ad",
+      "virtual_address": "0x7f7d363b74"
+    },
+    {
+      "disabled": "01",
+      "enabled": "00",
+      "feature": "exposure",
+      "id": "wbi-73fbb24",
+      "image": "wbi",
+      "known_values": [
+        "01",
+        "00"
+      ],
+      "offset": 121617188,
+      "purpose": "remove one model-unavailable contribution"
+    },
+    {
+      "disabled": "01",
+      "enabled": "00",
+      "feature": "exposure",
+      "id": "wbi-73fbb28",
+      "image": "wbi",
+      "known_values": [
+        "01",
+        "00"
+      ],
+      "offset": 121617192,
+      "purpose": "remove one model-unavailable contribution"
+    },
+    {
+      "disabled": "01",
+      "enabled": "00",
+      "feature": "exposure",
+      "id": "wbi-73fbb2c",
+      "image": "wbi",
+      "known_values": [
+        "01",
+        "00"
+      ],
+      "offset": 121617196,
+      "purpose": "remove one model-unavailable contribution"
+    },
+    {
+      "disabled": "03",
+      "enabled": "02",
+      "feature": "exposure",
+      "id": "wbi-743ec30",
+      "image": "wbi",
+      "known_values": [
+        "03",
+        "02"
+      ],
+      "offset": 121891888,
+      "purpose": "remove one model-unavailable contribution"
+    },
+    {
+      "disabled": "03",
+      "enabled": "02",
+      "feature": "exposure",
+      "id": "wbi-743ec34",
+      "image": "wbi",
+      "known_values": [
+        "03",
+        "02"
+      ],
+      "offset": 121891892,
+      "purpose": "remove one model-unavailable contribution"
+    },
+    {
+      "disabled": "01",
+      "enabled": "00",
+      "feature": "exposure",
+      "id": "wbi-743ec38",
+      "image": "wbi",
+      "known_values": [
+        "01",
+        "00"
+      ],
+      "offset": 121891896,
+      "purpose": "remove one model-unavailable contribution"
+    },
+    {
+      "disabled": "03",
+      "enabled": "02",
+      "feature": "exposure",
+      "id": "wbi-743ec6c",
+      "image": "wbi",
+      "known_values": [
+        "03",
+        "02"
+      ],
+      "offset": 121891948,
+      "purpose": "remove one model-unavailable contribution"
+    },
+    {
+      "disabled": "03",
+      "enabled": "02",
+      "feature": "exposure",
+      "id": "wbi-743ec70",
+      "image": "wbi",
+      "known_values": [
+        "03",
+        "02"
+      ],
+      "offset": 121891952,
+      "purpose": "remove one model-unavailable contribution"
+    },
+    {
+      "disabled": "01",
+      "enabled": "00",
+      "feature": "exposure",
+      "id": "wbi-743ec74",
+      "image": "wbi",
+      "known_values": [
+        "01",
+        "00"
+      ],
+      "offset": 121891956,
+      "purpose": "remove one model-unavailable contribution"
+    },
+    {
+      "disabled": "03",
+      "enabled": "02",
+      "feature": "exposure",
+      "id": "wbi-743ecc8",
+      "image": "wbi",
+      "known_values": [
+        "03",
+        "02"
+      ],
+      "offset": 121892040,
+      "purpose": "remove one model-unavailable contribution"
+    },
+    {
+      "disabled": "03",
+      "enabled": "02",
+      "feature": "exposure",
+      "id": "wbi-743eccc",
+      "image": "wbi",
+      "known_values": [
+        "03",
+        "02"
+      ],
+      "offset": 121892044,
+      "purpose": "remove one model-unavailable contribution"
+    },
+    {
+      "disabled": "01",
+      "enabled": "00",
+      "feature": "exposure",
+      "id": "wbi-743ecd0",
+      "image": "wbi",
+      "known_values": [
+        "01",
+        "00"
+      ],
+      "offset": 121892048,
+      "purpose": "remove one model-unavailable contribution"
+    },
+    {
+      "image": "wbi",
+      "offset": 122046004,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "shutter",
+      "purpose": "remove exactly one model-unavailable contribution",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "virtual_address": "0x7f7d35d434",
+      "id": "edit-179"
+    },
+    {
+      "image": "wbi",
+      "offset": 122047292,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "shutter",
+      "purpose": "remove exactly one model-unavailable contribution",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "virtual_address": "0x7f7d35d93c",
+      "id": "edit-180"
+    },
+    {
+      "disabled": "03",
+      "enabled": "02",
+      "feature": "exposure",
+      "id": "wbi-74944c8",
+      "image": "wbi",
+      "known_values": [
+        "03",
+        "02"
+      ],
+      "offset": 122242248,
+      "purpose": "remove one model-unavailable contribution"
+    },
+    {
+      "disabled": "03",
+      "enabled": "02",
+      "feature": "exposure",
+      "id": "wbi-74944d8",
+      "image": "wbi",
+      "known_values": [
+        "03",
+        "02"
+      ],
+      "offset": 122242264,
+      "purpose": "remove one model-unavailable contribution"
+    },
+    {
+      "disabled": "03",
+      "enabled": "02",
+      "feature": "exposure",
+      "id": "wbi-74944f0",
+      "image": "wbi",
+      "known_values": [
+        "03",
+        "02"
+      ],
+      "offset": 122242288,
+      "purpose": "remove one model-unavailable contribution"
+    },
+    {
+      "image": "wbi",
+      "offset": 122244916,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a6: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d35cd34",
+      "id": "edit-181"
+    },
+    {
+      "image": "wbi",
+      "offset": 122244920,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a8: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d35cd38",
+      "id": "edit-182"
+    },
+    {
+      "image": "wbi",
+      "offset": 122244924,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5aa: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d35cd3c",
+      "id": "edit-183"
+    },
+    {
+      "image": "wbi",
+      "offset": 122244932,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ac: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d35cd44",
+      "id": "edit-184"
+    },
+    {
+      "image": "wbi",
+      "offset": 122244936,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ad: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d35cd48",
+      "id": "edit-185"
+    },
+    {
+      "image": "wbi",
+      "offset": 122244940,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ae: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d35cd4c",
+      "id": "edit-186"
+    },
+    {
+      "image": "wbi",
+      "offset": 122244944,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5af: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d35cd50",
+      "id": "edit-187"
+    },
+    {
+      "image": "wbi",
+      "offset": 122244948,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5b0: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d35cd54",
+      "id": "edit-188"
+    },
+    {
+      "image": "wbi",
+      "offset": 122244960,
+      "disabled": "02000000",
+      "enabled": "01000000",
+      "known_values": [
+        "01000000",
+        "02000000"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP switch 0x5a5: remove one unsupported contribution at 0x728",
+      "sources": [
+        "samples/A6700-v2.00.ftp-parameter-availability-audit-20261016.json"
+      ],
+      "virtual_address": "0x7f7d35cd60",
+      "id": "edit-189"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328460,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a6: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b38c",
+      "id": "edit-190"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328464,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a6: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b390",
+      "id": "edit-191"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328468,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a6: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b394",
+      "id": "edit-192"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328472,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a6: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b398",
+      "id": "edit-193"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328480,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a8: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b3a0",
+      "id": "edit-194"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328484,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a8: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b3a4",
+      "id": "edit-195"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328488,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a8: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b3a8",
+      "id": "edit-196"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328492,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a8: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b3ac",
+      "id": "edit-197"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328496,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a8: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b3b0",
+      "id": "edit-198"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328500,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a8: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b3b4",
+      "id": "edit-199"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328504,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a8: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b3b8",
+      "id": "edit-200"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328508,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a8: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b3bc",
+      "id": "edit-201"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328512,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a8: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b3c0",
+      "id": "edit-202"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328520,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5aa: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b3c8",
+      "id": "edit-203"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328524,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5aa: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b3cc",
+      "id": "edit-204"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328540,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ac: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b3dc",
+      "id": "edit-205"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328544,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ac: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b3e0",
+      "id": "edit-206"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328548,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ac: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b3e4",
+      "id": "edit-207"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328556,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ad: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b3ec",
+      "id": "edit-208"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328560,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ad: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b3f0",
+      "id": "edit-209"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328568,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ae: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b3f8",
+      "id": "edit-210"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328572,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ae: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b3fc",
+      "id": "edit-211"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328580,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5af: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b404",
+      "id": "edit-212"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328584,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5af: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b408",
+      "id": "edit-213"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328588,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5af: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b40c",
+      "id": "edit-214"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328596,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5b0: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b414",
+      "id": "edit-215"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328600,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5b0: remove one unsupported-model reference",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b418",
+      "id": "edit-216"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328636,
+      "disabled": "02000000",
+      "enabled": "01000000",
+      "known_values": [
+        "01000000",
+        "02000000"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP switch 0x5a5: remove one unsupported contribution at 0x40df",
+      "sources": [
+        "samples/A6700-v2.00.ftp-parameter-availability-audit-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b43c",
+      "id": "edit-217"
+    },
+    {
+      "image": "wbi",
+      "offset": 122328640,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP switch 0x5a5: remove one unsupported contribution at 0x40e0",
+      "sources": [
+        "samples/A6700-v2.00.ftp-parameter-availability-audit-20261016.json"
+      ],
+      "virtual_address": "0x7f7d36b440",
+      "id": "edit-218"
+    },
+    {
+      "image": "wbi",
+      "offset": 122338900,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "shutter",
+      "purpose": "remove exactly one model-unavailable contribution",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "virtual_address": "0x7f7d36dc54",
+      "id": "edit-219"
+    },
+    {
+      "image": "wbi",
+      "offset": 122338904,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "shutter",
+      "purpose": "remove exactly one model-unavailable contribution",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "virtual_address": "0x7f7d36dc58",
+      "id": "edit-220"
+    },
+    {
+      "image": "wbi",
+      "offset": 122477648,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "shutter",
+      "purpose": "remove exactly one model-unavailable contribution",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "virtual_address": "0x7f7d370a50",
+      "id": "edit-221"
+    },
+    {
+      "image": "wbi",
+      "offset": 122477652,
+      "disabled": "01000000",
+      "enabled": "00000000",
+      "known_values": [
+        "00000000",
+        "01000000"
+      ],
+      "feature": "shutter",
+      "purpose": "remove exactly one model-unavailable contribution",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "virtual_address": "0x7f7d370a54",
+      "id": "edit-222"
+    },
+    {
+      "disabled": "01",
+      "enabled": "00",
+      "feature": "sound",
+      "id": "wbi-80e55de",
+      "image": "wbi",
+      "known_values": [
+        "01",
+        "00"
+      ],
+      "offset": 135157214,
+      "purpose": "runtime inhibit source for leaf 0xabf (model singleton byte)"
+    },
+    {
+      "disabled": "01",
+      "enabled": "00",
+      "feature": "sound",
+      "id": "wbi-80e55df",
+      "image": "wbi",
+      "known_values": [
+        "01",
+        "00"
+      ],
+      "offset": 135157215,
+      "purpose": "runtime inhibit source for leaf 0xac0 (model singleton byte)"
+    },
+    {
+      "image": "wbi",
+      "offset": 135157648,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "shutter",
+      "purpose": "native availability flag after decrement",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "virtual_address": "0x7f7d39e590",
+      "id": "edit-223"
+    },
+    {
+      "image": "wbi",
+      "offset": 135157649,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "shutter",
+      "purpose": "native availability flag after decrement",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "virtual_address": "0x7f7d39e591",
+      "id": "edit-224"
+    },
+    {
+      "image": "wbi",
+      "offset": 135157650,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "shutter",
+      "purpose": "native availability flag after decrement",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "virtual_address": "0x7f7d39e592",
+      "id": "edit-225"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634586,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP switch 0x5a5: OFF option flag after its count reaches zero",
+      "sources": [
+        "samples/A6700-v2.00.ftp-parameter-availability-audit-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d59a",
+      "id": "edit-226"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634600,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a6: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d5a8",
+      "id": "edit-227"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634601,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a6: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d5a9",
+      "id": "edit-228"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634602,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a6: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d5aa",
+      "id": "edit-229"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634603,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a6: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d5ab",
+      "id": "edit-230"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634604,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a6: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d5ac",
+      "id": "edit-231"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634636,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a8: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d5cc",
+      "id": "edit-232"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634637,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a8: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d5cd",
+      "id": "edit-233"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634638,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a8: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d5ce",
+      "id": "edit-234"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634639,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a8: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d5cf",
+      "id": "edit-235"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634640,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a8: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d5d0",
+      "id": "edit-236"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634641,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a8: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d5d1",
+      "id": "edit-237"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634642,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a8: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d5d2",
+      "id": "edit-238"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634643,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a8: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d5d3",
+      "id": "edit-239"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634644,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a8: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d5d4",
+      "id": "edit-240"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634645,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a8: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d5d5",
+      "id": "edit-241"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634676,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5aa: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d5f4",
+      "id": "edit-242"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634677,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5aa: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d5f5",
+      "id": "edit-243"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634678,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5aa: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d5f6",
+      "id": "edit-244"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634708,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ac: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d614",
+      "id": "edit-245"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634709,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ac: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d615",
+      "id": "edit-246"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634710,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ac: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d616",
+      "id": "edit-247"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634711,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ac: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d617",
+      "id": "edit-248"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634724,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ad: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d624",
+      "id": "edit-249"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634725,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ad: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d625",
+      "id": "edit-250"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634726,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ad: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d626",
+      "id": "edit-251"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634740,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ae: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d634",
+      "id": "edit-252"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634741,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ae: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d635",
+      "id": "edit-253"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634742,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ae: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d636",
+      "id": "edit-254"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634756,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5af: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d644",
+      "id": "edit-255"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634757,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5af: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d645",
+      "id": "edit-256"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634758,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5af: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d646",
+      "id": "edit-257"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634759,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5af: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d647",
+      "id": "edit-258"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634772,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5b0: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d654",
+      "id": "edit-259"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634773,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5b0: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d655",
+      "id": "edit-260"
+    },
+    {
+      "image": "wbi",
+      "offset": 139634774,
+      "disabled": "01",
+      "enabled": "00",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5b0: native flag at zero reference count",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0x7f7d39d656",
+      "id": "edit-261"
+    },
+    {
+      "image": "wbi",
+      "offset": 239556236,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "shutter",
+      "purpose": "runtime model availability",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "virtual_address": "0xb9f48c",
+      "id": "edit-262"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "pixel_shift",
+      "id": "edit-ps-011",
+      "image": "wbi",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 239556972,
+      "purpose": "0x730: 4-image submode runtime model availability",
+      "virtual_address": "0xb9f76c"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "pixel_shift",
+      "id": "edit-ps-012",
+      "image": "wbi",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 239557004,
+      "purpose": "0x731: 16-image submode runtime model availability",
+      "virtual_address": "0xb9f78c"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "pixel_shift",
+      "id": "edit-ps-004",
+      "image": "wbi",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 239756844,
+      "purpose": "0x4b5: parent runtime model availability",
+      "virtual_address": "0xb9e42c"
+    },
+    {
+      "image": "wbi",
+      "offset": 239756908,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "shutter",
+      "purpose": "runtime model availability",
+      "sources": [
+        "research/shutter-poweroff-20261017/phase4/candidate/delta.json"
+      ],
+      "virtual_address": "0xb9e46c",
+      "id": "edit-263"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "wbi-e4a696c",
+      "image": "wbi",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 239757676,
+      "purpose": "0x50c runtime support"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "wbi-e4a698c",
+      "image": "wbi",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 239757708,
+      "purpose": "0x50d runtime support"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "exposure",
+      "id": "wbi-e4a69ac",
+      "image": "wbi",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 239757740,
+      "purpose": "0x50e runtime support"
+    },
+    {
+      "image": "wbi",
+      "offset": 239758892,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "FTP switch 0x5a5: runtime availability hash flag",
+      "sources": [
+        "samples/A6700-v2.00.ftp-parameter-availability-audit-20261016.json"
+      ],
+      "virtual_address": "0xb9ec2c",
+      "id": "edit-264"
+    },
+    {
+      "image": "wbi",
+      "offset": 239758924,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a6: runtime model availability",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0xb9ec4c",
+      "id": "edit-265"
+    },
+    {
+      "image": "wbi",
+      "offset": 239758956,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5a8: runtime model availability",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0xb9ec6c",
+      "id": "edit-266"
+    },
+    {
+      "image": "wbi",
+      "offset": 239758988,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5aa: runtime model availability",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0xb9ec8c",
+      "id": "edit-267"
+    },
+    {
+      "image": "wbi",
+      "offset": 239759020,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ac: runtime model availability",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0xb9ecac",
+      "id": "edit-268"
+    },
+    {
+      "image": "wbi",
+      "offset": 239759052,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ad: runtime model availability",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0xb9eccc",
+      "id": "edit-269"
+    },
+    {
+      "image": "wbi",
+      "offset": 239759084,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5ae: runtime model availability",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0xb9ecec",
+      "id": "edit-270"
+    },
+    {
+      "image": "wbi",
+      "offset": 239759116,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5af: runtime model availability",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0xb9ed0c",
+      "id": "edit-271"
+    },
+    {
+      "image": "wbi",
+      "offset": 239759148,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "ftp",
+      "purpose": "0x5b0: runtime model availability",
+      "sources": [
+        "samples/A6700-v2.00.ftp-settings-support-manifest-20261016.json"
+      ],
+      "virtual_address": "0xb9ed2c",
+      "id": "edit-272"
+    },
+    {
+      "id": "app-4b7b93a",
+      "image": "app",
+      "offset": 79149370,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "dynamic_active",
+      "purpose": "leaf 0x3a3 gate: 00 locked, 01 open (ZV-E1 factory)"
+    },
+    {
+      "id": "wbi-2495b3a",
+      "image": "wbi",
+      "offset": 38361914,
+      "disabled": "00",
+      "enabled": "01",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "feature": "dynamic_active",
+      "purpose": "WBI-resident leaf 0x3a3 gate: 00 locked, 01 open"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "dynamic_active",
+      "id": "app-3ed654c",
+      "image": "app",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 65889612,
+      "purpose": "ACTIVE_PLUS initializer value-support flag"
+    },
+    {
+      "disabled": "00",
+      "enabled": "01",
+      "feature": "dynamic_active",
+      "id": "wbi-3e2839c",
+      "image": "wbi",
+      "known_values": [
+        "00",
+        "01"
+      ],
+      "offset": 65176476,
+      "purpose": "ACTIVE_PLUS runtime value-support flag"
+    },
+    {
+      "disabled": "01",
+      "enabled": "00",
+      "feature": "dynamic_active",
+      "id": "wbi-743f53c",
+      "image": "wbi",
+      "known_values": [
+        "01",
+        "00"
+      ],
+      "offset": 121894204,
+      "purpose": "remove exactly one unsupported-value contribution; upper 3 counter bytes pinned"
+    },
+    {
+      "disabled": "01",
+      "enabled": "00",
+      "feature": "dynamic_active",
+      "id": "wbi-10c4701",
+      "image": "wbi",
+      "known_values": [
+        "01",
+        "00"
+      ],
+      "offset": 17581825,
+      "purpose": "inhibition output consistent with count zero"
+    }
+  ]
+}

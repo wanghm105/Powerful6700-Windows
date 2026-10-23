@@ -1,0 +1,79 @@
+# 验证边界
+
+## 已在本机验证（无相机）
+
+- `.venv`（Python 3.12.3）里 `import usb / libusb_package / PySide6 / PyInstaller` 全部可用；
+- `pytest tests -q` → **24 passed / 1 skipped**（SetupAPI 解析与枚举、wdi 参数与白名单、补丁幂等与
+  载荷严格性、Windows 兼容层的设备锁/独占保存/二进制写/异常放锁、六个页面无头渲染）；
+- `--offline-self-test`（源码运行）：python / platform / vendor / files / data-dir / libusb / setupapi /
+  controller 全 OK，wdi 因未下载而 SKIP；
+- `build_controller('physical') + check_environment()` → `environment.ready = True`，
+  `python / platform / pyusb / libusb / payload-integrity` 五项全绿（platform 一行显示 `win32`
+  且 remediation 已换成 Windows 文案，证明 `doctor.diagnose` 补丁生效）；
+- 图形界面在 `QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts` 下逐页渲染并截图，
+  中文、换行、滚动、卡片高度均正常；
+- PyInstaller onedir 冻结包构建成功（`dist/Powerful6700/`，98 MB），
+  `Powerful6700.exe --offline-self-test` 通过，libusb 解析到 `_internal\libusb-1.0.dll`；
+- Windows 兼容层（`windows_shim`）实测：两把非阻塞独占锁（同进程第二次取锁被拒、退出后可再次取得）、
+  `save_json` 用 `O_EXCL` 独占而不覆盖、`backup` 写文件为二进制模式（0x0A 不再被改写成 0x0D 0x0A）、
+  `planner.os.O_NONBLOCK` 为 0。
+
+## 已在真机验证（A6700 · 固件 2.00，2026-10-23）
+
+真机链路在本机 Windows 上完整跑通，证据来自 `.data\state\runs\<run>\result.json`：
+
+1. **驱动与两次认证**：`0x0E76 "Sony A6700 - Storage"` 由 `wdi-simple.exe` 绑定 WinUSB；
+   只读检查期间相机切到 `0x0336`，工具用 SetupAPI 先发现设备、再自动为它绑定 WinUSB（无需重插），
+   两次 Senser 认证均通过，`SenserChannel 0x4010 / 0x4007 / 0x4008` 三段下发正常。
+2. **只读检查**（`20261023T141915Z-9620d425d4`）：`status=inspected`、`compatible=true`、`issues=[]`，
+   读回 260 扇区 / 133,120 字节，六个功能读到的状态均为 `disabled`。
+3. **功能状态备份**（`20261023T141931Z-f5964089ab`）：`status=backup-completed`、`verified=true`，
+   写出 41,582 字节 `.a6700backup`，本机 `sha256sum` 复算与界面显示一致
+   （`5e07a01ce0263bc9fa7ee6a22e32cb68dc481d9284431265faf192304911b6a4`）——
+   证明 `backup.os.O_BINARY` 补丁生效，否则 0x0A 会被 CRT 改写成 0x0D 0x0A。
+4. **关闭方向写入 + 机身验收**（`20261023T143727Z-e22ff0f6af`，只选电子快门声音走 `close`）：
+   `status=completed`、`verified=true`、
+   `native_result={"status":0,"touched":4,"rolled_back":false,"failed_index":null}`，
+   回读 `final_features` 里 `sound=disabled`；两分钟后的只读检查
+   （`20261023T143943Z-e08b3daf91`）仍读到 `sound=disabled`，证明状态持久化。
+   上游 0.2 的 `aftercare`（断电重启 6 步 + 菜单验收路径）已在结果页「机身验收」卡片渲染。
+6. **真实写入**（`20261023T142020Z-b9ce355bd1`，四个功能全选 `unlock`）：
+   `status=completed`、`verified=true`、`write_attempted=true`、
+   `native_result={"status":0,"touched":138,"rolled_back":false,"failed_index":null}`、
+   `changed_bytes=333`、`changed_sectors=138`，回读 `final_features` 四项全部 `enabled`，
+   `restart_required=true`；相机重启后功能生效（实测出现新的 MTP / 传输相关菜单项）。
+
+## 仍未验证
+
+以下仍没在真机上验证过，不要当作可用性承诺：
+
+1. **失败回滚**（`rolled-back` / `recovery-required`）与写入中断（拔线、相机睡眠）时的行为；
+2. **功能状态恢复**（`.a6700backup` 写回、只写回清单字段的稀疏恢复）从未执行过；
+3. `0x047D` 这一初始 PID（MSC 的另一种枚举）未验证，本机只见到 `0x0E76`；
+4. 多台索尼设备同时连接时的唯一性报错路径；
+5. 提权失败、非管理员启动时的 Windows 提示链路（目前只验证了管理员路径）；
+6. macOS / Linux 行为（本端口只为 Windows 增加适配，未回归原平台）。
+
+## 复现顺序
+
+`--diagnose` → 驱动准备（先 `0x0E76`；`0x0336` 会在只读检查时自动完成）→ 只读检查 →
+功能状态备份 → 选择功能写入 → 重启相机 → 重新只读检查确认状态为 `enabled`。
+
+## 真机：恢复路径的第一轮观察（2026-10-23）
+
+`20261023T144526Z-dc69a1f9c0`：`action=restore`、`status=no-op`、`write_attempted=false`、`verified=true`，备份 SHA-256 与备份文件一致。
+
+结论：恢复链路（备份读取、兼容性校验、回读）本身正常，但作用域不对——上游 `run_reserved()` 对 restore 也按 `selected_features` 传功能子集（当时只剩「电子快门声音」被勾选），而备份里该功能本来就是 disabled，于是 `restore_plan()` 得到零差异，直接走 no-op。已在 `controller.restore_scope` 补丁里改为整份写回，新增回归测试 `test_restore_scope_expands_to_every_available_feature`。真机 restored + 独立回读证据仍待补。
+
+## 真机：备份恢复（restored）通过（2026-10-23）
+
+`20261023T144959Z-d58b6f753c`：`action=restore`、`status=restored`、`verified=true`、
+`write_attempted=true`、`native_result={"status":0,"touched":134,"rolled_back":false,"failed_index":null}`、
+`plan.changed_sectors=134`、`plan.changed_bytes=326`、`restart_required=true`、
+`cleanup_status=null`。`final_features` 六项全部 `disabled`，与备份一致。
+
+`restore-source.json` 记录了来源：`A6700-state-20261023T141931Z-2059d1ac.a6700backup`、
+SHA-256 `5e07a01c…b6a4`、`tool_version=0.1.0.dev33`（备份由旧版本创建，按 profile 摘要匹配后仍可恢复）。
+
+至此四条真机写路径全部有证据：只读检查、功能状态备份、解锁写入、关闭写入、备份恢复。
+仍未验证：失败回滚（需要人为制造相机内校验失败）、跨固件/跨机型兼容。

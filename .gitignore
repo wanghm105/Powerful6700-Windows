@@ -1,0 +1,11 @@
+.venv/
+build/
+dist/
+.data/
+wheelhouse/
+__pycache__/
+*.pyc
+.pytest_cache/
+pytest-of-*
+a6700win-*
+*.egg-info/
