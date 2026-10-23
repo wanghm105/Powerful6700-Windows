@@ -91,6 +91,7 @@ py -3.12 -m venv .venv
 - [docs/BUILD.md](docs/BUILD.md) — 依赖、测试、PyInstaller 打包与产物
 - [docs/VALIDATION.md](docs/VALIDATION.md) — 已离线验证 / 仍需实机验证的边界
 - [docs/UPSTREAM-NOTES.md](docs/UPSTREAM-NOTES.md) — 上游清单哈希过期问题及处理依据
+- [docs/FEASIBILITY-FL23.md](docs/FEASIBILITY-FL23.md) — FL2/FL3 与富士创意外观为什么不在现有能力范围内（只读取证）
 
 ## 许可与声明
 

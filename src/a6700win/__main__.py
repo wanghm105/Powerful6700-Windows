@@ -47,6 +47,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--json", metavar="PATH", help="把自检结果写入指定 JSON 文件")
     parser.add_argument("--render-pages", metavar="DIR", help=argparse.SUPPRESS)
     parser.add_argument("--elevated-worker", metavar="REQUEST", help=argparse.SUPPRESS)
+    parser.add_argument("--dump", metavar="PATH", help=argparse.SUPPRESS)
+    parser.add_argument("--out", metavar="FILE", help=argparse.SUPPRESS)
+    parser.add_argument("--bytes", type=int, metavar="N", help=argparse.SUPPRESS)
+    parser.add_argument("--offset", type=int, default=0, metavar="N", help=argparse.SUPPRESS)
+    parser.add_argument("--chunk", type=int, default=None, metavar="N", help=argparse.SUPPRESS)
     return parser
 
 
@@ -77,6 +82,27 @@ def main(argv: list[str] | None = None) -> int:
 
         result = render(args.render_pages, "simulation" if args.demo else "physical", check=True)
         print(json.dumps(result, ensure_ascii=False))
+        return 0
+
+    if args.dump:
+        if not args.out:
+            print("--dump 需要同时给出 --out 输出文件")
+            return 2
+        from .research import ResearchError, read_file_to
+
+        try:
+            report = read_file_to(
+                args.dump,
+                Path(args.out),
+                progress=lambda m: print(m, flush=True),
+                offset=args.offset,
+                limit=args.bytes,
+                chunk=args.chunk,
+            )
+        except ResearchError as exc:
+            print(f"读取失败：{exc}")
+            return 1
+        print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0
 
     if args.diagnose:

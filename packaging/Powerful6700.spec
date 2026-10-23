@@ -28,6 +28,9 @@ def _libusb() -> Path:
 
 
 datas = [(str(VENDOR), "third_party/a6700_unlock")]
+NATIVE = ROOT / "native"
+if NATIVE.is_dir():
+    datas.append((str(NATIVE), "native"))
 if WDI.is_dir():
     datas.append((str(WDI), "third_party/libwdi"))
 datas.append((str(_libusb()), "."))

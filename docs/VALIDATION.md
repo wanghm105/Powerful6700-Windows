@@ -77,3 +77,17 @@ SHA-256 `5e07a01c…b6a4`、`tool_version=0.1.0.dev33`（备份由旧版本创�
 
 至此四条真机写路径全部有证据：只读检查、功能状态备份、解锁写入、关闭写入、备份恢复。
 仍未验证：失败回滚（需要人为制造相机内校验失败）、跨固件/跨机型兼容。
+
+## 只读读取（研究用，参考 A7C2 的 Jiritsu 文件命令）
+
+主机侧新增 src/a6700win/dump.py、src/a6700win/research.py、tools/probe_camera.py，
+相机侧新增只读载荷 native/dump_range.c → native/dump_range.elf（15,600 字节，
+sha256 040916c1...3a82，zig 0.13.0 / aarch64-freestanding + ld.lld 构建）。
+
+- 已在本机验证（无相机）：协议编解码、分块循环、偏移/限长、零长度设备提示、
+  载荷清单校验、/tmp/jiritsu/../.. 路径穿越拼装 —— tests/test_dump.py 10 个用例，
+  全仓 pytest 38 passed。
+- 未在真机验证：/usr/lib/appFw.so 与 /dev/nflasha15 是否可读、单块 1 MiB 的往返速率、
+  STOP_SENSER 在长读取后的退出确认。
+- 风险边界：载荷只以 O_RDONLY 打开文件，源码中没有 pwrite64 调用路径；
+  主机侧只发 SELECT/READ 与 SET_FILE/EXECUTE，不发送写入器。
