@@ -152,7 +152,7 @@
 | 文件 | \`BODYDATA.DAT\`，版本 2.00，发布日期 2025-10-06 |
 | 大小 | 1,024,017,848 字节（与页面标注完全一致） |
 | SHA-256 | \`d3c7db5b9b40c89b11ecf03addf0f6ff1d9b917acf9f55e46360462e86db847c\` |
-| 本地副本 | \`D:\DSH Desktop\Project\firmware\BODYDATA-2.00.dat\`（不进仓库） |
+| 本地副本 | \`firmware\BODYDATA-2.00.dat\`（不进仓库） |
 
 ### 9.1 容器结构
 

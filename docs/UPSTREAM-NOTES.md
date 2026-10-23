@@ -71,7 +71,7 @@
 - `notice.py`：须知文案更新为 0.2 的表述；`PHYSICAL_RESULT_LABELS['completed']` 改为
   「写入与独立回读通过，待机身验收」。
 
-补丁面没有变化：20 个补丁点仍然全部有效（`pytest` 25 passed）。上游 0.2 **仍然没有** Windows
+补丁面没有变化：22 个补丁点仍然全部有效（`pytest` 37 passed, 1 skipped）。上游 0.2 **仍然没有** Windows
 分支——`libusb_library_path()` 只有 Linux 与 macOS 两个分支，`doctor` 的 platform 检查仍然是
 `sys.platform in ('darwin','linux')`，所以本项目的那几个补丁依旧是必需的。
 

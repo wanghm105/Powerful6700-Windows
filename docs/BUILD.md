@@ -25,7 +25,7 @@ PIP_DISABLE_PIP_VERSION_CHECK=1 ./.venv/Scripts/python.exe -m pip install \
 ## 测试
 
 ```bash
-./.venv/Scripts/python.exe -m pytest tests -q      # 17 passed
+./.venv/Scripts/python.exe -m pytest tests -q      # 37 passed, 1 skipped
 ```
 
 界面用例走无头渲染，必须同时设置字体目录，否则 Qt 找不到中文字体会整体退化成方框：

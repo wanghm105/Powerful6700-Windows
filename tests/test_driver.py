@@ -46,9 +46,15 @@ def test_scan_report_shape():
     assert set(report) >= {"platform", "architecture", "admin", "wdi", "wdi_path", "devices", "driver_required"}
     assert isinstance(report["devices"], list)
     for row in report["devices"]:
-        assert row["pid"] in driver.SUPPORTED_PIDS
+        # 扫描会列出所有在场的 Sony 设备（含 HID 0x096F 这类非工具目标），
+        # 用 supported 标记它是否属于本工具的三个 PID。
+        assert isinstance(row["pid"], int)
+        assert row["supported"] is (row["pid"] in driver.SUPPORTED_PIDS)
         assert isinstance(row["winusb"], bool)
-    assert report["driver_required"] is any(not row["winusb"] for row in report["devices"])
+        assert isinstance(row["service"], str)
+    assert report["driver_required"] is any(
+        row["supported"] and not row["winusb"] for row in report["devices"]
+    )
     assert set(driver.PID_LABELS) == set(driver.SUPPORTED_PIDS)
 
 

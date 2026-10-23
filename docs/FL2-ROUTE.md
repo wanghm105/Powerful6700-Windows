@@ -193,3 +193,46 @@ Sunset Light Deep Clear BW Landscape Portrait Neutral Vivid Off Standard`（老�
 | `tools/dump_camera.py` / `tools/dump_parts.py` | 只读 dump 文件与分区（可续传、多分区一次会话） |
 | `tools/a64.py` / `a64xref.py` / `rela.py` / `fwscan.py` / `lookdispatch.py` / `looknames.py` | 反汇编、ADRP 页索引、重定位查询、指令扫描、派发扫描、名字表 |
 | `tools/caution_registry.py` / `caution_family.py` / `literal_scan.py` | 卡速文案全表导出与族分析（另一条线，见 `CARD-SPEED.md`） |
+
+## 12. 「菜单出现 FL2/FL3」的结论：资源 id 表没有空位，文字不可改
+
+- appFw-2.00.so 0x49e34d0 是一张 16 字节记录表 `{char* key, 0, u32 id, u32 strlen}`：
+  id=1 AUTO / 2 STANDARD / 3 PORTRAIT / 4 NEUTRAL / 5 VIVID / 6 BRILLIANT / 7 FILM /
+  8 RETRO / 9 AIRY / 0xa BLACK_WHITE / 0xb SEPIA，紧接着 id=0xc 就是 BASE_ISO_SENSITIVITY_DISPLAY_ON。
+  → **创意外观只有 11 个资源 id，没有空闲槽位可挂新名字。**
+- 显示文字不是明文：appFw-2.00.so（89 MB）、nflasha5 WBI（314 MB）、以及 14 个分区的镜像全部扫过，
+  中文 UTF-8 密集串 0 处；`Sepia`/`SDXC`/`Creative Look` 等英文串 0 命中。
+  → 菜单文字存放在不可读写的资源包里，**新增 "FL2"/"FL3" 标签不可行**。
+- A7C2 之所以能多出这两项，是它固件出厂就带这两个 look 的 id 与标签，工具只打开开关（patches.json 里 8 处 appFw 写入无一写文本）。
+
+## 13. 新的可用面：任意 CP 单元都能读（19 个）
+
+`tools/cp_survey.py` 用同一套 0x603/0x40 协议把 cpapp 单元目录（cpapp-b.bin 0xC2A5B0，19 条 12 字节 `{key, ram, size}`）里的单元全部读出。实测结果：
+
+| key | size | 非零 | 形态 |
+|---|---|---|---|
+| 0x02a40000 | 4608 | 1415 | Q8 定点值（低字节常为 0），疑为增益/系数表 |
+| 0x02a40001 | 8192 | 2815 | 参数表 + chroma（已定位，槽 5=VV2 / 6=PT / 8=FL / 9=SE） |
+| 0x02a40002 | 768 | 111 | 含 `0x0010` 重复块 |
+| 0x02a40003 | 512 | 0 | 全零（运行时填充） |
+| 0x02a40004 | 1280 | 120 | `0x0f` 标记块 |
+| 0x02a40005 | 1280 | 520 | 结构化小整数 |
+| 0x02a40006 | 1280 | 662 | 结构化小整数 |
+| 0x02a40007 | 1280 | 0 | 全零 |
+| 0x02a40008 | 1536 | 87 | 开头 `0011000b0006` |
+| 0x02a40009 | 1024 | 55 | `0x0100/0x4000` 重复，疑位图/标志 |
+| 0x02a4000a | 256 | 1 | 仅一个 0x19 |
+| 0x02a4000b | 256 | 63 | 3×3 (x,y) 网格：x∈{0x77,0xfc,0x180}，y∈{0x2d,0x155,0x282} |
+| 0x02a4000c | 512 | 95 | 表头 + 稀疏项 |
+| 0x02a4000d | 28672 | 8752 | 参数表 + 矩阵（576 B/槽，在用槽 0..19、32、33） |
+| 0x02a4000e | 1792 | 1230 | 含递增小整数序列，疑曲线 |
+| 0x02a4000f | 512 | 203 | `0f 09 14 16` 起头 |
+| 0x02a40010 | 512 | 0 | 全零 |
+| 0x02a40011 | 768 | 24 | 仅 0x00/0x10 两种字节 |
+| 0x02a40012 | 1024 | 0 | 全零 |
+
+镜像保存在 `firmware/cp/units/unit-*.bin`。
+
+**意义**：路线 C 的可写面从 2 个单元扩到 19 个。如果某个单元承载 tone 曲线（gamma），就能在不写 flash 的前提下做出「像素上像 FL2」的外观。
+
+新增工具：`tools/cp_survey.py`（批量读单元）、`tools/cp_ptr.py`（扫 cpapp 的 Thumb movw/movt 指针，1,792 处落在初始化数据块 [0xFBF000,0x11002B8) 内）。

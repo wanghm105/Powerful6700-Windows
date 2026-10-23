@@ -3,7 +3,7 @@
 ## 已在本机验证（无相机）
 
 - `.venv`（Python 3.12.3）里 `import usb / libusb_package / PySide6 / PyInstaller` 全部可用；
-- `pytest tests -q` → **24 passed / 1 skipped**（SetupAPI 解析与枚举、wdi 参数与白名单、补丁幂等与
+- `pytest tests -q` → **37 passed / 1 skipped**（SetupAPI 解析与枚举、wdi 参数与白名单、补丁幂等与
   载荷严格性、Windows 兼容层的设备锁/独占保存/二进制写/异常放锁、六个页面无头渲染）；
 - `--offline-self-test`（源码运行）：python / platform / vendor / files / data-dir / libusb / setupapi /
   controller 全 OK，wdi 因未下载而 SKIP；
@@ -86,7 +86,7 @@ sha256 040916c1...3a82，zig 0.13.0 / aarch64-freestanding + ld.lld 构建）。
 
 - 已在本机验证（无相机）：协议编解码、分块循环、偏移/限长、零长度设备提示、
   载荷清单校验、/tmp/jiritsu/../.. 路径穿越拼装 —— tests/test_dump.py 10 个用例，
-  全仓 pytest 38 passed。
+  全仓 pytest 37 passed / 1 skipped。
 - 未在真机验证：/usr/lib/appFw.so 与 /dev/nflasha15 是否可读、单块 1 MiB 的往返速率、
   STOP_SENSER 在长读取后的退出确认。
 - 风险边界：载荷只以 O_RDONLY 打开文件，源码中没有 pwrite64 调用路径；

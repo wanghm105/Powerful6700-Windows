@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Rebuild A6700 transaction.c with zig cc and compare to the shipped payloads."""
 import hashlib, json, os, subprocess, sys, tempfile, pathlib
-ROOT = pathlib.Path(r"D:/DSH Desktop/Project/Powerful6700Win")
+ROOT = pathlib.Path(os.environ.get("POWERFUL6700_ROOT", pathlib.Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(ROOT / "third_party"))
 from a6700_unlock.catalog import load_catalog
 from a6700_unlock.device_profile import load_device_profile

@@ -3,10 +3,12 @@
 Stage 1: locate target strings, resolve their virtual addresses, and find
 data slots (RELATIVE relocations / raw pointers) that reference them.
 """
-import struct, sys, json
+import os, struct, sys, json
 from pathlib import Path
 
-PATH = Path(r'D:\DSH Desktop\Project\firmware\appFw-2.00.so')
+PATH = Path(os.environ.get('A6700_APPFW', sys.argv[1] if len(sys.argv) > 1 else 'firmware/appFw-2.00.so'))
+if not PATH.exists():
+    raise SystemExit(f'appFw image not found at {PATH}; pass a path or set A6700_APPFW')
 data = PATH.read_bytes()
 
 def sections(blob):

@@ -6,9 +6,9 @@
 
 | 文件 | 大小 | sha256 |
 | --- | --- | --- |
-| `D:\DSH Desktop\Project\firmware\appFw-2.00.so` | 89,027,992 | 721fceaef26a46dabd538c4729b8c5a937b51887d4b127ba2832959b03c1144d |
-| `D:\DSH Desktop\Project\firmware\nflasha8-2.00.bin` | 67,108,864 | 3bddcce378438423617a7c647ab862e5fd4ee6d0d4f627b769b4b08007457dcc |
-| `D:\DSH Desktop\Project\firmware\cp\cpapp-b.bin` | 17,892,024 | 43c5d056ed935795…（完整值见 sidecar） |
+| `firmware/appFw-2.00.so` | 89,027,992 | 721fceaef26a46dabd538c4729b8c5a937b51887d4b127ba2832959b03c1144d |
+| `firmware/nflasha8-2.00.bin` | 67,108,864 | 3bddcce378438423617a7c647ab862e5fd4ee6d0d4f627b769b4b08007457dcc |
+| `firmware/cp\cpapp-b.bin` | 17,892,024 | 43c5d056ed935795…（完整值见 sidecar） |
 
 dump 命令（无需管理员，0x0E76 已绑 WinUSB）：
 

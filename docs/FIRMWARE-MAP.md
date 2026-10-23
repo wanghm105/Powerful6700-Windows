@@ -27,7 +27,7 @@ tools/probe_camera.py（只读探针）。
 
 不存在：nflasha0 / 9 / 14 / 16 / 17 / 19 / 20（stat 直接失败）。
 
-## 2. 已落盘的镜像（D:\DSH Desktop\Project\firmware\）
+## 2. 已落盘的镜像（本地 `firmware/` 目录，不入库）
 
 | 文件 | 字节 | sha256 |
 | --- | ---: | --- |
