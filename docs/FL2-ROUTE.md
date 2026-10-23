@@ -155,7 +155,7 @@ id=0xc 已是 BASE_ISO_SENSITIVITY_DISPLAY_ON（不是外观）
 | --- | ---: | --- |
 | `appFw-2.00.so` | 89 MB | `FL2`/`FL3` 0；`Sepia`/`SDXC`/`Creative Look` 0；中文 UTF-8 密集串 0 |
 | `nflasha5-2.00.bin`（WBI） | 314 MB | 同上，全部 0 |
-| 其余 13 个分区 | ~1.2 GB | 同上，全部 0 |
+| 其余 13 个分区（除 WBI 外全部，含 CP 与 nflasha15） | 1.30 GiB | 同上，全部 0 |
 
 补充证据：appFw 里 zlib 候选流 3,756 个位置，解压成功 **0** 个；UTF-16LE 的 `VV2`/`Standard`/`Sepia` 也 0 命中。
 → 菜单文字存放在**不可读写的资源包**里。
