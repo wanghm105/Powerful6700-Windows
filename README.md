@@ -18,6 +18,14 @@ Windows/macOS 桌面工具）：同样是「安装包 + 图形界面 + 驱动一
    在 Windows 上恒为 False，会永久阻塞整个流程）；
 3. **桌面外壳与打包**：PySide6 图形界面 + PyInstaller onedir 冻结包，不需要用户装 Python。
 
+## 下载
+
+- 发布包：[`Powerful6700-Windows-x64.zip`](https://github.com/HAOMIN-Wang1005/Powerful6700-Windows/releases/latest)（约 40 MB，解压即用，绿色版，无需安装 Python）
+- SHA-256：`e20e66cb5a577e24914cfd92ee99e2732013b94f94bc470f45bbd585e668cb4e`
+- 也可以从源码运行：`git clone` 后按 `docs/BUILD.md` 建虚拟环境，或直接双击 `启动.cmd`
+
+首次使用建议右键「以管理员身份运行」：把相机 USB 接口绑定到 WinUSB 需要管理员权限，而这一步在「驱动准备」页只需做一次。
+
 ## 兼容范围（与上游一致，不做扩展）
 
 - 机型：Sony A6700（ILCE-6700）
