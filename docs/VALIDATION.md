@@ -3,8 +3,9 @@
 ## 已在本机验证（无相机）
 
 - `.venv`（Python 3.12.3）里 `import usb / libusb_package / PySide6 / PyInstaller` 全部可用；
-- `pytest tests -q` → **37 passed / 1 skipped**（SetupAPI 解析与枚举、wdi 参数与白名单、补丁幂等与
-  载荷严格性、Windows 兼容层的设备锁/独占保存/二进制写/异常放锁、六个页面无头渲染）；
+- `pytest tests -q` → **74 passed / 1 skipped**（SetupAPI 解析与枚举、wdi 参数与白名单、补丁幂等与
+  载荷严格性、Windows 兼容层的设备锁/独占保存/二进制写/异常放锁、结构守卫的时间戳豁免与
+  **写入目标回填**、恢复预约/写前拒绝分类、驱动页门闸、外观页会话释放、六个页面无头渲染）；
 - `--offline-self-test`（源码运行）：python / platform / vendor / files / data-dir / libusb / setupapi /
   controller 全 OK，wdi 因未下载而 SKIP；
 - `build_controller('physical') + check_environment()` → `environment.ready = True`，
@@ -86,7 +87,7 @@ sha256 040916c1...3a82，zig 0.13.0 / aarch64-freestanding + ld.lld 构建）。
 
 - 已在本机验证（无相机）：协议编解码、分块循环、偏移/限长、零长度设备提示、
   载荷清单校验、/tmp/jiritsu/../.. 路径穿越拼装 —— tests/test_dump.py 10 个用例，
-  全仓 pytest 37 passed / 1 skipped。
+  全仓 pytest 74 passed / 1 skipped。
 - 已在真机验证（2026-10-23/24，A6700 + 固件 2.00，全程只读）：
 
   | 对象 | 结果 |
@@ -116,3 +117,24 @@ sha256 040916c1...3a82，zig 0.13.0 / aarch64-freestanding + ld.lld 构建）。
 - 已用这条通路完成的观测（详见 `FL2-ROUTE.md`）：19 个单元批量读取；全部色度归零 → 所有外观变灰；
   槽 5/6/8/9 分别归零或放大 → 定位到 VV2 / PT / FL / SE；矩阵槽归零 → 只影响饱和度。
 - 未验证：CP 写在大块（28,672 B）上的失败语义与重试边界；两个颜色单元之外的写路径。
+
+## 0.3.1 写入失败的根因与修复（2026-10-24）
+
+用户报告：解锁／关闭在 0.3.1 上报 `Request changes bytes outside available catalog-owned fields`，
+状态 `uncertain`、`写操作：是`。
+
+根因（离线复现，未连接相机）：0.3.1 的结构守卫豁免把 `inspect_sectors()` 的输入换成
+「时间戳清零」的副本，上游又用这份副本生成写入目标 `after`；`before` 是相机原始字节。
+`device_protocol.request()` 用只允许改目录字段的掩码逐字节复核，9 个守卫扇区里
+每个 inode 的 12 字节时间戳被判成越界修改，整单在发 USB 之前被拒。
+复现脚本：`.data/repro_guard_write.py`（不在仓库内）。
+
+修复：归一化只用于比对，返回前把时间戳按相机原值补回 `after`（`guards.restore_volatile()`）。
+新增回归用例 `test_write_target_matches_camera_timestamps`：用真实 profile 与真实
+`request()` 跑一次 `unlock` 目标校验，回到 0.3.1 的实现会直接抛错。
+
+影响面：只读检查、功能状态备份、备份恢复不走这条路径，未受影响；失败时相机没有收到任何
+USB 数据（`request()` 在 `backend.write()` 内部、发 USB 之前抛错），功能状态未变。
+
+未验证：修复后的真实写入。0.3.1 起没有做过实机写入，0.3.2 的解锁／关闭需要在真机上重新验收
+一次（`status=completed` + 独立回读 + 重启后状态保持）才能说这条路径恢复。

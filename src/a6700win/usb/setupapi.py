@@ -220,7 +220,11 @@ def summary() -> dict:
         error="",
         pids=pids,
         devices=[
-            dict(pid=pid, service=service_for_pid(pid), winusb=is_winusb_service(service_for_pid(pid)))
+            # 复合设备（父节点 + 接口节点）必须按“任意节点已绑定”判定，
+            # 否则驱动页会一直说没绑定，而 install() 又认为已经就绪。
+            dict(pid=pid, service=service_for_pid(pid),
+                 services=driver_state(pid)["services"],
+                 winusb=driver_state(pid)["winusb"])
             for pid in pids
         ],
     )

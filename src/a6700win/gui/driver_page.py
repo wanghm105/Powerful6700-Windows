@@ -111,6 +111,19 @@ class DriverPage(Page):
         self.scan_button.setEnabled(not snapshot.get("busy"))
         self.download_button.setEnabled(not snapshot.get("busy") and not report.get("wdi"))
 
+    def step_reason(self, snapshot: dict) -> str | None:
+        """没绑 WinUSB 就进下一步，只读检查只会报“找不到 MSC 相机”。"""
+        report = getattr(self.app, "driver_report", {}) or {}
+        if not report:
+            return "先点「扫描设备」，确认相机接口已经绑定 WinUSB。"
+        devices = report.get("devices") or []
+        if not devices:
+            return "没发现索尼相机接口：接好数据线、把相机设成海量存储(MSC) 后重新扫描。"
+        pending = [row for row in devices if not row.get("winusb")]
+        if pending:
+            return "还有 %d 个相机接口没绑定 WinUSB，绑定后拔插一次数据线。" % len(pending)
+        return None
+
     def _scan(self) -> None:
         self.app.run_task("扫描 USB 设备", lambda progress: driver_mod.scan(), self._scanned)
 
@@ -142,6 +155,12 @@ class DriverPage(Page):
         self.app.run_task("绑定 WinUSB", job, self._installed)
 
     def _installed(self, result) -> None:
-        changed = (result or {}).get("driver_changed")
-        self.log.log("WinUSB 绑定完成。" if changed else "接口已经绑定到 WinUSB，无需重复安装。")
+        result = result or {}
+        if result.get("driver_changed"):
+            self.log.log("WinUSB 绑定完成。")
+        elif result.get("pids"):
+            # 安装程序返回成功，但没观察到接口切换：不能当成功。
+            self.log.log("安装程序已返回，但没有观察到接口切换到 WinUSB；拔插一次数据线后重新扫描。")
+        else:
+            self.log.log("接口已经绑定到 WinUSB，无需重复安装。")
         self._scan()

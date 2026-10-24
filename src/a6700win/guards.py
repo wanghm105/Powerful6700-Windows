@@ -95,11 +95,42 @@ def prepare(profile, sectors: list[bytes]) -> list[bytes]:
     return prepared
 
 
+def restore_volatile(target: bytes, raw: bytes) -> bytes:
+    """把目标扇区里被清零的时间戳字段，按相机读到的原值填回去。"""
+    data = overlay()
+    size = int(data["inode_size"])
+    fields = [(int(start), int(end)) for start, end in data.get("volatile") or []]
+    if not fields or size <= 0 or len(target) != len(raw) or len(target) % size:
+        return bytes(target)
+    buf = bytearray(target)
+    for base in range(0, len(buf), size):
+        for start, end in fields:
+            buf[base + start:base + end] = raw[base + start:base + end]
+    return bytes(buf)
+
+
 def wrap_inspect(original):
-    """包一层 inspect_sectors：先做豁免准备，再交给上游原函数。"""
+    """包一层 inspect_sectors：先做豁免准备，再交给上游原函数。
+
+    归一化只用于比对。上游会把传进去的扇区直接当成写入目标（`after`）拷贝出去，
+    而 `device_protocol.request()` 会用「只允许改目录字段」的掩码逐字节复核新旧
+    扇区。时间戳不在掩码里，如果让清零后的副本留在 `after`，整次写入会在发 USB
+    之前就被判成“越界修改”（Request changes bytes outside available catalog-owned
+    fields）。所以返回前把这些字段按相机原值补回去：相机自己维护的时间戳不进
+    写入器，和“只读比对”的初衷一致。
+    """
 
     def inspect_sectors(profile, sectors, action="inspect", features=None):
-        return original(profile, prepare(profile, list(sectors)), action, features)
+        raw = list(sectors)
+        plan, after = original(profile, prepare(profile, raw), action, features)
+        table = records()
+        if not table or after is None:
+            return plan, after
+        merged = list(after)
+        for index in table:
+            if index < len(merged) and index < len(raw) and len(merged[index]) == 512:
+                merged[index] = restore_volatile(merged[index], raw[index])
+        return plan, merged
 
     inspect_sectors._a6700win_wrapped = True
     inspect_sectors._a6700win_original = original

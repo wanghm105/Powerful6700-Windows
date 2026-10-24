@@ -121,6 +121,37 @@ class _StubController:
         return True
 
 
+def test_driver_page_blocks_next_until_bound(app):
+    """没绑 WinUSB 就放行下一步，只读检查只会报“找不到 MSC 相机”。"""
+    from a6700win.gui.driver_page import DriverPage
+
+    stub = _StubApp()
+    page = DriverPage(stub)
+    assert "扫描设备" in page.step_reason({})
+
+    stub.driver_report = dict(devices=[dict(pid=0x0E76, winusb=False)])
+    assert "WinUSB" in page.step_reason({})
+
+    stub.driver_report = dict(devices=[dict(pid=0x0E76, winusb=True)])
+    assert page.step_reason({}) is None
+
+
+def test_looks_page_releases_controller_session(app):
+    """只读检查的会话还开着时，外观页必须先退掉它，否则会撞设备锁。"""
+    from a6700win.gui.looks_page import LooksPage
+
+    stub = _StubApp()
+    ended = []
+    stub.controller = type("C", (), {
+        "service": type("S", (), {"connected": True})(),
+        "end_session": lambda self: ended.append(True),
+    })()
+    stub.call_controller = lambda fn: fn()
+    page = LooksPage(stub)
+    page._release_controller_session()
+    assert ended == [True]
+
+
 def test_notice_gates_check_on_acknowledgement(app):
     """勾选阅读确认之前不能启动检查；确认后提示变成「请先运行启动检查」。"""
     from a6700win.gui.pages import NoticePage

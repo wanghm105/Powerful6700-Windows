@@ -61,7 +61,7 @@ def ensure_vendor_on_path() -> str:
 def _writable(path: Path) -> bool:
     try:
         path.mkdir(parents=True, exist_ok=True)
-        probe = path / ".write-probe"
+        probe = path / (".write-probe-%d" % os.getpid())
         probe.write_bytes(b"")
         probe.unlink()
         return True

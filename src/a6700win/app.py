@@ -20,13 +20,14 @@ def vendor_ready() -> bool:
 
 
 def build_controller(mode: str = "physical"):
-    """构造控制器；physical 模式会先装 Windows 补丁。"""
+    """构造控制器；两种模式都先装 Windows 补丁。"""
     if not vendor_ready():
         raise RuntimeError(
             "内置的 a6700_unlock 运行时缺失，请重新安装本程序或重新解压完整发布包。"
         )
-    if mode == "physical":
-        patches.install()
+    # 预览（simulation）也要装：doctor 的 platform 检查与载荷校验在两种模式下同样成立，
+    # 不装的话演示模式的启动检查会被上游清单里的 source_sha 不一致卡死。
+    patches.install()
     from a6700_unlock.desktop.controller import DesktopController
 
     return DesktopController(

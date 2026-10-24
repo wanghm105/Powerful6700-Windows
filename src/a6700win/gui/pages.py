@@ -601,11 +601,16 @@ class ResultPage(Page):
         actions.addStretch(1)
         self.home_button = QPushButton("返回功能管理")
         self.home_button.setObjectName("Primary")
-        self.home_button.clicked.connect(lambda: self.app.call_controller(
-            lambda: self.app.controller.home()) or self.app.goto("home"))
+        self.home_button.clicked.connect(self._back_to_home)
         actions.addWidget(self.home_button)
         self.root.addLayout(actions)
         self.root.addStretch(1)
+
+    def _back_to_home(self) -> None:
+        """控制器成功时返回 snapshot（真值），不能再拿它做 or 判断。"""
+        snapshot = self.app.call_controller(self.app.controller.home)
+        if snapshot is not None:
+            self.app.goto("home")
 
     def render(self, snapshot: dict) -> None:
         result = snapshot.get("result") or {}

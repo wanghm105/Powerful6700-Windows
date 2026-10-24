@@ -30,6 +30,9 @@ EXPECTED = {
     "planner.os.O_NONBLOCK",
     "backup.os.O_BINARY",
     "controller.run_reserved",
+    "controller.reserve",
+    "operations._execute_session",
+    "operations._restore_session",
     "controller.available_backups",
     "controller.restore_scope",
     "device_profile.inspect_sectors",
@@ -52,7 +55,7 @@ def test_install_replaces_behaviour_not_just_names():
     from a6700_unlock.usb import legacy
 
     assert legacy.observed_sony_product_ids() == setupapi.present_pids()
-    assert legacy.normal_mode_observed(0.1) is (setupapi.present_pids() == [0x0E76])
+    assert legacy.normal_mode_observed(0.1) is (setupapi.present_pids() in ([0x0E76], [0x047D]))
 
 
 def test_libusb_resolver_points_at_installed_dll():
@@ -137,3 +140,40 @@ def test_restore_scope_expands_to_every_available_feature():
     windows_shim.wrap_restore_scope(original)(holder, lambda _m: None)
     assert seen["features"] == {"ftp", "shutter", "exposure", "sound"}
     assert holder.selected_features == {"sound"}
+
+
+def test_restore_can_be_reserved_without_a_selection():
+    """相机全开时 selected_features 为空，恢复仍应能预约到备份校验这一步。"""
+    from a6700win import windows_shim
+
+    class FakeCatalog:
+        available_features = ["ftp", "shutter"]
+
+    class FakeProfile:
+        catalog = FakeCatalog()
+
+    class Holder:
+        service = type("S", (), {"profile": FakeProfile()})()
+        selected_features = set()
+
+    seen = {}
+    holder = Holder()
+
+    def original(self, action, backup_id=None):
+        seen["action"] = action
+        seen["selection"] = set(self.selected_features)
+        seen["backup"] = backup_id
+
+    windows_shim.wrap_reserve(original)(holder, "restore", "backup-id")
+    assert seen == dict(action="restore", selection={"ftp", "shutter"}, backup="backup-id")
+
+
+def test_preimage_rejection_is_not_reported_as_readback_failure():
+    """status=1 且零字节写入 → rejected，不是“独立回读失败”。"""
+    wrapped = patches._wrap_session(lambda *_a, **_k: dict(
+        status="verification-failed",
+        write_attempted=True,
+        native_result=dict(status=1, touched=0, error="preimage changed")))
+    result = wrapped()
+    assert result["status"] == "rejected"
+    assert result["error"] == "preimage changed"

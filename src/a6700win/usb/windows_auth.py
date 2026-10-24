@@ -23,6 +23,70 @@ SONY_VENDOR_ID = 0x054C
 SERVICE_PID = 0x0336
 MSC_PIDS = driver.MSC_PIDS
 
+# SetupAPI 看到这些 PID 时给用户的解释；其余 Sony PID 通常是 MTP／遥控模式。
+MODE_LABELS = {
+    0x047D: "存储模式（MSC）",
+    0x0E76: "存储模式（MSC）",
+    0x02A9: "服务模式",
+    0x0336: "服务模式",
+}
+
+
+def observed_devices_hint() -> str:
+    """用 SetupAPI 说明 Windows 到底看到了什么（不需要 libusb、不需要管理员）。
+
+    「USB 认证失败（正在寻找唯一的 MSC 相机…）」最常见的原因其实是相机连着、
+    但 Windows 没把它当索尼相机看（MTP／遥控模式），或者驱动没绑到 WinUSB。
+    这条提示把实际 PID 和驱动一起说出来，用户看一眼就知道该改哪。
+    """
+    from . import setupapi
+
+    try:
+        rows = setupapi.devices()
+    except Exception:  # noqa: BLE001 - 枚举失败只是少一条提示
+        return ""
+    if not rows:
+        return ("Windows 现在没有看到任何索尼 USB 设备：确认相机已开机、屏幕不是休眠状态"
+                "（半按快门唤醒），换一根数据线、换一个 USB 口再试。")
+    parts = []
+    seen = set()
+    for row in rows:
+        pid = row.get("pid")
+        if pid is None or pid in seen:
+            continue
+        seen.add(pid)
+        label = MODE_LABELS.get(pid, "不是存储模式（多半是 MTP、PC 遥控或自动）")
+        parts.append("0x%04X %s，驱动 %s"
+                     % (pid, label, setupapi.service_for_pid(pid) or "未安装"))
+    return "Windows 实际看到的索尼设备：" + "；".join(parts)
+
+
+def prepare_storage_driver(legacy, progress) -> None:
+    """MSC 相机已插好但驱动不是 WinUSB 时，先补绑一次。
+
+    服务模式（0x0336）的补绑在上游流程里，存储模式这一半原来没有：相机明明连着，
+    libusb 却枚举不到它，只会在「寻找唯一的 MSC 相机」这一步空等到超时，报出来的
+    还是「确认 MSC、关闭 FTP」这类无关提示。
+    """
+    from . import setupapi
+
+    for pid in sorted(driver.MSC_PIDS):
+        try:
+            state = setupapi.driver_state(pid)
+        except Exception:  # noqa: BLE001 - 枚举不可用时不要挡住正常流程
+            return
+        if not state.get("present") or state.get("winusb"):
+            continue
+        progress("相机已连接（0x%04X），正在为它准备 WinUSB 驱动…" % pid)
+        try:
+            driver.ensure_pid(pid, progress)
+        except driver.DriverError as exc:
+            raise legacy.ProbeError(
+                "相机已连接（0x%04X），但没能为它安装 WinUSB 驱动：%s；"
+                "请到「驱动准备」页重新绑定，或以管理员身份运行本程序。" % (pid, exc)
+            ) from exc
+        return
+
 
 def _legacy():
     from a6700_unlock.usb import legacy
@@ -167,12 +231,20 @@ def run_authentication(
 
     progress("正在寻找唯一的 MSC 相机…")
     _recover_service_mode(legacy, initial_pid, service_pid, progress)
+    prepare_storage_driver(legacy, progress)
+    # 补绑驱动可能花掉几秒，重新起算等待窗口，别让后面的轮询立刻超时。
+    deadline = max(deadline, time.monotonic() + float(timeout_seconds))
     while True:
         try:
             initial_device = legacy.choose_initial_device(initial_pid)
             break
         except legacy.ProbeError as exc:
-            if not str(exc).startswith("no Sony MSC device") or time.monotonic() >= deadline:
+            if not str(exc).startswith("no Sony MSC device"):
+                raise
+            if time.monotonic() >= deadline:
+                hint = observed_devices_hint()
+                if hint:
+                    raise legacy.ProbeError(str(exc) + "。" + hint) from exc
                 raise
             time.sleep(0.25)
 
@@ -234,7 +306,9 @@ def normal_mode_observed(timeout_seconds: float = 3.0) -> bool:
             pids = setupapi.present_pids()
         except Exception:  # noqa: BLE001
             return False
-        if pids == [0x0E76]:
+        # 0x047D 是同一机型的另一存储 PID（见 driver.MSC_PIDS）；只认 0x0E76 会把
+        # 正常回到 MSC 的相机报成“无法确认退出服务模式”。
+        if pids in ([0x0E76], [0x047D]):
             return True
         if time.monotonic() >= deadline:
             return False

@@ -177,6 +177,29 @@ def wrap_run_reserved(original):
     run_reserved._a6700win_wrapped = True
     return run_reserved
 
+def wrap_reserve(original):
+    """恢复不读勾选，但上游 reserve 会先因为“没勾功能”拒绝。
+
+    只读检查后 selected_features 是“尚未开启的功能”；相机已经全开时这个集合是空的，
+    于是 reserve('restore') 在检查备份之前就抛“请至少选择一个功能”。真正执行时
+    wrap_restore_scope 又会把选择临时扩成全部已开放功能，所以这里预约前补上，
+    让两侧语义一致。
+    """
+
+    def reserve(self, action, backup_id=None):
+        if action == "restore" and not self.selected_features:
+            try:
+                available = set(self.service.profile.catalog.available_features)
+            except Exception:  # noqa: BLE001 - 取不到就交给上游报它自己的错
+                available = set()
+            if available:
+                self.selected_features = available
+        return original(self, action, backup_id)
+
+    reserve._a6700win_wrapped = True
+    return reserve
+
+
 def wrap_restore_scope(original):
     """让「恢复」始终整份写回备份，而不是只恢复勾选的功能。
 

@@ -231,7 +231,18 @@ class LooksPage(Page):
             holder["pill"].set_state(text, color)
 
     # ---------------------------------------------------------------- 动作
+    def _release_controller_session(self) -> None:
+        """同一台相机只能有一个 USB 会话；外观读写会自己重连，先把旧会话退掉。"""
+        controller = getattr(self.app, "controller", None)
+        service = getattr(controller, "service", None)
+        if service is None or not getattr(service, "connected", False):
+            return
+        self.log.log("先退出只读检查保持的 USB 会话，释放接口后再连接相机…")
+        self.app.call_controller(controller.end_session)
+        self.app.refresh()
+
     def _detect(self) -> None:
+        self._release_controller_session()
         self.app.run_task("检测外观状态", lambda progress: looks_mod.read_state(progress), self._detected)
 
     def _detected(self, report) -> None:
@@ -245,10 +256,12 @@ class LooksPage(Page):
         self.app.refresh()
 
     def _apply(self) -> None:
+        self._release_controller_session()
         self.app.run_task("写入自定义外观", lambda progress: looks_mod.apply(progress),
                           lambda report: self._written(report, restoring=False))
 
     def _restore(self) -> None:
+        self._release_controller_session()
         self.app.run_task("还原自定义外观", lambda progress: looks_mod.restore(progress),
                           lambda report: self._written(report, restoring=True))
 

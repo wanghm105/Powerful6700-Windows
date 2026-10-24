@@ -313,7 +313,13 @@ class MainWindow(QMainWindow):
                 event.ignore()
                 return
             self.task.request_cancel()
-            self.task.wait(5000)
+            # 任务没停下来就不能关：线程还活着时关窗会在写 USB 的过程中销毁会话。
+            if not self.task.wait(5000):
+                QMessageBox.information(
+                    self, "操作还在收尾",
+                    "当前任务还没有停下（可能正在等待相机响应）。等它结束后再关闭窗口。")
+                event.ignore()
+                return
         try:
             self.controller.end_session()
         except Exception:  # noqa: BLE001 - 关闭时尽力释放

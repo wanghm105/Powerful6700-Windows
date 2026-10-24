@@ -249,19 +249,25 @@ def _shell_execute_runas(command: list[str], working_directory: str) -> int:
     return int(info.hProcess or 0)
 
 
-def _wait_process(handle: int, timeout_seconds: float, status_path: Path, progress) -> None:
+def _wait_process(handle: int, timeout_seconds: float, status_path: Path, progress) -> bool:
+    """等提权子进程结束；超时就终止它并返回 False（不能只关句柄了事）。"""
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
     waited = 0.0
+    exited = False
     while waited < timeout_seconds:
         code = kernel32.WaitForSingleObject(wintypes.HANDLE(handle), 500)
         if code == 0:
+            exited = True
             break
         waited += 0.5
         if status_path.is_file():
             progress("驱动安装程序正在收尾…")
         elif waited in (2.0, 10.0, 30.0):
             progress("等待管理员授权完成驱动安装…")
+    if not exited:
+        kernel32.TerminateProcess(wintypes.HANDLE(handle), 1)
     kernel32.CloseHandle(wintypes.HANDLE(handle))
+    return exited
 
 
 def _read_status(status_path: Path) -> dict:
@@ -314,7 +320,10 @@ def install(pids, progress=lambda message: None, timeout_seconds: float = 180.0)
     else:
         progress("需要管理员授权以安装 USB 驱动，请在弹出的系统窗口点击“是”…")
         handle = _shell_execute_runas(_self_command(request_path), str(job_dir))
-        _wait_process(handle, timeout_seconds, status_path, progress)
+        budget = float(timeout_seconds) * max(1, len(wanted))
+        if not _wait_process(handle, budget, status_path, progress):
+            raise DriverError(
+                "驱动安装超过 %d 秒仍未结束，已终止安装进程；请拔插数据线后重试。" % int(budget))
 
     status = _read_status(status_path)
     if not status.get("ok"):

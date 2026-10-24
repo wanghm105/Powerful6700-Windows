@@ -52,6 +52,9 @@ _PATCH_NAMES = (
     "planner.os.O_NONBLOCK",
     "backup.os.O_BINARY",
     "controller.run_reserved",
+    "controller.reserve",
+    "operations._execute_session",
+    "operations._restore_session",
     "device_profile.inspect_sectors",
     "operations.inspect_sectors",
     "controller.available_backups",
@@ -169,6 +172,32 @@ def windows_payloads(profile):
             raise DeviceError("Packaged %s payload size mismatch" % name)
         result[name] = data
     return result
+
+
+def _windows_write_status(result):
+    """status=1（preimage 变化、touched=0）应当算“写前校验拒绝”，不是“回读失败”。
+
+    上游的 rejected 分支要求回读结果等于 before，而 status=1 本身就意味着设备内容
+    已经不等于 before，那个分支永远走不到。零字节写入被标成 verification-failed，
+    界面会提示“不要盲目重试”，用户以为可能已经写了一半。
+    """
+    if not isinstance(result, dict):
+        return result
+    native = result.get("native_result") or {}
+    if (result.get("status") == "verification-failed"
+            and native.get("status")
+            and not native.get("touched")):
+        result["status"] = "rejected"
+        result["error"] = native.get("error") or "写前校验未通过，相机内没有执行修改"
+    return result
+
+
+def _wrap_session(original):
+    def session(*args, **kwargs):
+        return _windows_write_status(original(*args, **kwargs))
+
+    session._a6700win_wrapped = True
+    return session
 
 
 def _windows_available_backups(self):
@@ -299,6 +328,18 @@ def install() -> dict:
         controller_class._a6700win_original_available_backups = controller_class._available_backups
         controller_class._available_backups = _windows_available_backups
         applied.append("controller.available_backups")
+
+    # 恢复不读勾选；相机全开时 selected_features 为空，上游 reserve 会在看备份之前拒绝。
+    if not getattr(controller_class.reserve, "_a6700win_wrapped", False):
+        controller_class.reserve = windows_shim.wrap_reserve(controller_class.reserve)
+        applied.append("controller.reserve")
+
+    # status=1（写前校验拒绝、零字节写入）不能报成“独立回读失败”。
+    for name in ("_execute_session", "_restore_session"):
+        current = getattr(operations, name)
+        if not getattr(current, "_a6700win_wrapped", False):
+            setattr(operations, name, _wrap_session(current))
+            applied.append("operations." + name)
 
     _installed = True
     already = [name for name in _PATCH_NAMES if name not in applied]

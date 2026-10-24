@@ -23,6 +23,11 @@ def settle(app, rounds: int = 4) -> None:
 def render(out, mode: str = "physical", size: str = "1240x860", check: bool = False) -> dict:
     """渲染全部页面；返回 {out, files, phase, ready} 供调用方打印或校验。"""
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    if not os.environ.get("QT_QPA_FONTDIR"):
+        # 不设字体目录时 Qt 会静默把中文画成方框，截图看着“成功”但不可用。
+        fonts = Path("C:/Windows/Fonts")
+        if fonts.is_dir():
+            os.environ["QT_QPA_FONTDIR"] = str(fonts)
 
     from PySide6.QtWidgets import QApplication
 
