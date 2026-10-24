@@ -34,6 +34,9 @@ if NATIVE.is_dir():
 if WDI.is_dir():
     datas.append((str(WDI), "third_party/libwdi"))
 datas.append((str(_libusb()), "."))
+LOOKS = ROOT / "docs" / "looks-profile.json"
+if LOOKS.is_file():
+    datas.append((str(LOOKS), "docs"))
 
 a = Analysis(
     [str(ROOT / "packaging" / "entry.py")],

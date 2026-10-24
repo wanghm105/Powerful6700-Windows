@@ -8,7 +8,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-PAGES = ("notice", "preparation", "home", "result", "driver", "about")
+PAGES = ("notice", "preparation", "home", "looks", "result", "driver", "about")
 
 
 def settle(app, rounds: int = 4) -> None:

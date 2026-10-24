@@ -15,6 +15,7 @@ from ..version import APP_TITLE, APP_VERSION
 from . import theme
 from .about_page import AboutPage
 from .driver_page import DriverPage
+from .looks_page import LooksPage
 from .pages import HomePage, NoticePage, PreparationPage, ResultPage
 from .worker import Task
 
@@ -22,6 +23,7 @@ NAV = [
     ("notice", "操作前须知", "1"),
     ("preparation", "相机准备", "2"),
     ("home", "功能管理", "3"),
+    ("looks", "自定义外观", ""),
     ("result", "操作结果", "4"),
     ("driver", "驱动准备", ""),
     ("about", "关于与诊断", ""),
@@ -55,6 +57,7 @@ class MainWindow(QMainWindow):
         self.controller = build_controller(mode)
         self.snapshot: dict = {}
         self.driver_report: dict = {}
+        self.looks_state: dict | None = None
         self.task: Task | None = None
         self._pending_done = None
 
@@ -75,6 +78,7 @@ class MainWindow(QMainWindow):
             "notice": NoticePage(self),
             "preparation": PreparationPage(self),
             "home": HomePage(self),
+            "looks": LooksPage(self),
             "result": ResultPage(self),
             "driver": DriverPage(self),
             "about": AboutPage(self),
