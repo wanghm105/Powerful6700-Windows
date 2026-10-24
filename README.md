@@ -159,7 +159,7 @@ python tools/looks_apply.py --confirm yes-write   # 相机切到 USB 存储模�
 
 | 系统 | 下载 | 说明 |
 | --- | --- | --- |
-| Windows 10 / 11 x64 | [`Powerful6700-Windows-x64.zip`](https://github.com/wanghm105/Powerful6700-Windows/releases/latest)（约 40 MB） | 解压即用，绿色版，不需要安装 Python |
+| Windows 10 / 11 x64 | [`Powerful6700-Windows-x64.zip`](https://github.com/wanghm105/Powerful6700-Windows/releases/latest)（约 40 MB） | 解压即用，绿色版，不需要安装 Python；包内含 `必读.txt` |
 
 - SHA-256：`e20e66cb5a577e24914cfd92ee99e2732013b94f94bc470f45bbd585e668cb4e`
 - 首次把相机绑到 WinUSB 需要**管理员权限**，建议右键「以管理员身份运行」。
@@ -180,7 +180,7 @@ python tools/looks_apply.py --confirm yes-write   # 相机切到 USB 存储模�
 
 ### 第 1 步：解压并启动
 
-解压 zip，得到 `Powerful6700` 目录，双击 `Powerful6700.exe`（建议右键「以管理员身份运行」）。
+解压 zip，得到 `Powerful6700` 目录，双击 `Powerful6700.exe`（建议右键「以管理员身份运行」）。压缩包根目录有一份 [必读.txt](packaging/必读.txt)：解压放哪、SmartScreen 怎么过、驱动组件、四步流程、还原步骤与常见问题都在里面，第一次用先照它走一遍。
 
 先点「开始启动检查」（跑过一次之后这个按钮会变成「重新运行启动检查」）。五项全绿、右下角显示 **● 环境就绪**、并勾选页面上的阅读确认之后，底部的「下一步：驱动准备」才会亮起来。
 

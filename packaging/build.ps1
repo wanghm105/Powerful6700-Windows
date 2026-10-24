@@ -21,6 +21,14 @@ if ($LASTEXITCODE -ne 0) { throw "PyInstaller 打包失败" }
 $exe = Join-Path $root "dist\Powerful6700\Powerful6700.exe"
 if (-not (Test-Path $exe)) { throw "未生成 $exe" }
 
-Write-Host "[3/3] 冻结包离线自检" -ForegroundColor Cyan
+Write-Host "[3/4] 复制必读与许可文件" -ForegroundColor Cyan
+$dist = Join-Path $root "dist\Powerful6700"
+Copy-Item (Join-Path $root "packaging\必读.txt") $dist -Force
+foreach ($name in @("LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md")) {
+    $src = Join-Path $root $name
+    if (Test-Path $src) { Copy-Item $src $dist -Force }
+}
+
+Write-Host "[4/4] 冻结包离线自检" -ForegroundColor Cyan
 & $exe --offline-self-test --json (Join-Path $root "dist\Powerful6700\offline-self-test.json")
 Write-Host "完成：$exe" -ForegroundColor Green
