@@ -143,20 +143,20 @@
 
 ## 9. 附：官方 2.00 更新包的取证结果（2026-10-24）
 
-已成功找到并下载 Sony 官方更新文件，用于判断"能否离线拿到 \`appFw.so\` 明文"。
+已成功找到并下载 Sony 官方更新文件，用于判断"能否离线拿到 `appFw.so` 明文"。
 
 | 项 | 值 |
 | --- | --- |
 | 支持页 | https://www.sony.com/electronics/support/e-mount-body-ilce-6000-series/ilce-6700/software/00298441 |
-| 下载入口 | \`https://support.d-imaging.sony.co.jp/download/NEX/tF4c94033c/BODYDATA.DAT?fm=am\` → 302 → \`https://di.update.sony.net/NEX/tF4c94033c/BODYDATA.DAT\` |
-| 文件 | \`BODYDATA.DAT\`，版本 2.00，发布日期 2025-10-06 |
+| 下载入口 | `https://support.d-imaging.sony.co.jp/download/NEX/tF4c94033c/BODYDATA.DAT?fm=am` → 302 → `https://di.update.sony.net/NEX/tF4c94033c/BODYDATA.DAT` |
+| 文件 | `BODYDATA.DAT`，版本 2.00，发布日期 2025-10-06 |
 | 大小 | 1,024,017,848 字节（与页面标注完全一致） |
-| SHA-256 | \`d3c7db5b9b40c89b11ecf03addf0f6ff1d9b917acf9f55e46360462e86db847c\` |
-| 本地副本 | \`firmware\BODYDATA-2.00.dat\`（不进仓库） |
+| SHA-256 | `d3c7db5b9b40c89b11ecf03addf0f6ff1d9b917acf9f55e46360462e86db847c` |
+| 本地副本 | `firmware\BODYDATA-2.00.dat`（不进仓库） |
 
 ### 9.1 容器结构
 
-\`895546550d0a1a0a\`（UFU magic）后依次是：
+`895546550d0a1a0a`（UFU magic）后依次是：
 
 | 偏移 | 类型 | 大小 |
 | --- | --- | --- |
@@ -166,17 +166,17 @@
 | 0x94 | FDAT | 1,024,017,680 |
 | 0x3D0945AC | DEND | 4 |
 
-UDID 里 13 个描述符，mode=1（普通模式）12 个 PID：\`0x0448 0x047D 0x0D15 0x0D16 0x0D19 0x0D1A 0x0DA4 0x0DA5 0x0E0A 0x0E0E 0x0E72 0x0E76\`，mode=2（更新模式）1 个：\`0x03E2\`。其中 \`0x047D\` 与 \`0x0E76\` 正是本项目使用的 MSC 身份，本文件确实覆盖 A6700。
+UDID 里 13 个描述符，mode=1（普通模式）12 个 PID：`0x0448 0x047D 0x0D15 0x0D16 0x0D19 0x0D1A 0x0DA4 0x0DA5 0x0E0A 0x0E0E 0x0E72 0x0E76`，mode=2（更新模式）1 个：`0x03E2`。其中 `0x047D` 与 `0x0E76` 正是本项目使用的 MSC 身份，本文件确实覆盖 A6700。
 
 ### 9.2 结论：离线解密不可行
 
-- FDAT 载荷首 32 字节是哈希，其余全为密文：文件里搜不到 \`UDTRFIRM\`、\`MSFIRM\`、\`\x7fELF\`、\`nflasha\`、\`appFw\` 任何明文特征。
-- 用 Sony-PMCA-RE 公开的 12 种 crypter（CXD4105 / MB8AC102 / CXD4115 / CXD4115_ilc / CXD4120 / CXD4120_pro / CXD4132 / CXD90014 / CXD90045_k0 / CXD90045_k8 / CXD90057_k0 / CXD90057_k8）逐个尝试，全部 \`BlockCryptException\`（块校验不通过，说明密钥不匹配，不是解析错误）。
-- 因此 **BODYDATA.DAT 无法用来做离线静态分析**；这也与上游文档一致：\`/dev/nflasha15\`、\`/dev/nflasha5\` 是机身内的**明文视图**，而 Pico 原始镜像是密文——明文 \`appFw.so\` 来自机身取证，不是来自更新包。
+- FDAT 载荷首 32 字节是哈希，其余全为密文：文件里搜不到 `UDTRFIRM`、`MSFIRM`、`\x7fELF`、`nflasha`、`appFw` 任何明文特征。
+- 用 Sony-PMCA-RE 公开的 12 种 crypter（CXD4105 / MB8AC102 / CXD4115 / CXD4115_ilc / CXD4120 / CXD4120_pro / CXD4132 / CXD90014 / CXD90045_k0 / CXD90045_k8 / CXD90057_k0 / CXD90057_k8）逐个尝试，全部 `BlockCryptException`（块校验不通过，说明密钥不匹配，不是解析错误）。
+- 因此 **BODYDATA.DAT 无法用来做离线静态分析**；这也与上游文档一致：`/dev/nflasha15`、`/dev/nflasha5` 是机身内的**明文视图**，而 Pico 原始镜像是密文——明文 `appFw.so` 来自机身取证，不是来自更新包。
 
 ### 9.3 这条路线剩下的唯一缺口
 
-读明文的通道已经存在：\`native/transaction.c\` 编译成 ARM64 共享库，经 Jiritsu \`SET_FILE\` \`file_id=2\` 加载 \`/tmp/jiritsu/libJit.so\` 后在维护进程里执行；我们只需要把"读 260 个固定扇区"改成"读指定范围"，就能把 \`appFw.so\`（89,027,992 字节）分段读出来。
+读明文的通道已经存在：`native/transaction.c` 编译成 ARM64 共享库，经 Jiritsu `SET_FILE` `file_id=2` 加载 `/tmp/jiritsu/libJit.so` 后在维护进程里执行；我们只需要把"读 260 个固定扇区"改成"读指定范围"，就能把 `appFw.so`（89,027,992 字节）分段读出来。
 
-当前缺的不是相机、不是协议，而是**一个 aarch64 交叉编译器**：本机 \`zig\` / \`clang\` / \`gcc\` / \`aarch64-linux-gnu-gcc\` 全都没有（上游是在 macOS 上用 Xcode 的 clang 构建的）。装上 zig 或 clang 后，"取明文 → 定位 look 表" 才具备条件。
+当前缺的不是相机、不是协议，而是**一个 aarch64 交叉编译器**：本机 `zig` / `clang` / `gcc` / `aarch64-linux-gnu-gcc` 全都没有（上游是在 macOS 上用 Xcode 的 clang 构建的）。装上 zig 或 clang 后，"取明文 → 定位 look 表" 才具备条件。
 
