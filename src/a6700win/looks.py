@@ -105,6 +105,8 @@ def read_state(progress=lambda message: None) -> dict:
         rows.append({
             "name": item["name"],
             "menu": item.get("menu", ""),
+            "slot": item.get("slot", ""),
+            "label": item.get("label", item["name"]),
             "bank": item["bank"],
             "state": classify(record(unit, item["bank"]), item),
             "rms": item.get("rms"),

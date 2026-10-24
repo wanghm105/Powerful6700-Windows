@@ -1,4 +1,4 @@
-# Powerful6700 · Windows 打包脚本（PyInstaller onedir）
+﻿# Powerful6700 · Windows 打包脚本（PyInstaller onedir）
 # 用法：powershell -ExecutionPolicy Bypass -File packaging\build.ps1
 $ErrorActionPreference = "Stop"
 

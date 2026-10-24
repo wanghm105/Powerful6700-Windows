@@ -79,3 +79,86 @@ def test_feature_rows_refresh_state_in_place(app):
     page.render(snapshot("disabled"))
     assert page.feature_rows["sound"] is row, "同一批功能不应重建行"
     assert "已关闭" in row.pill.text()
+
+
+class _StubApp:
+    """GUI 测试用的最小 app：控制器调用一律返回 True，不碰真实设备。"""
+
+    def __init__(self):
+        self.step_keys = ["notice", "driver", "preparation", "home", "looks", "result"]
+        self.step_titles = {"notice": "操作前须知", "driver": "驱动准备", "preparation": "相机准备",
+                            "home": "功能管理", "looks": "自定义外观", "result": "操作结果"}
+        self.snapshot = {}
+        self.controller = _StubController()
+
+    def call_controller(self, fn):
+        return True
+
+    def goto(self, key):
+        return None
+
+    def operate(self, *args, **kwargs):
+        return None
+
+    def select_features(self, mode):
+        return None
+
+    def refresh(self):
+        return None
+
+    def check_environment(self):
+        return None
+
+    def notify(self, *args, **kwargs):
+        return None
+
+
+class _StubController:
+    def acknowledge_notice(self, value):
+        return True
+
+    def begin_preparation(self):
+        return True
+
+
+def test_notice_gates_check_on_acknowledgement(app):
+    """勾选阅读确认之前不能启动检查；确认后提示变成「请先运行启动检查」。"""
+    from a6700win.gui.pages import NoticePage
+
+    page = NoticePage(_StubApp())
+    page.key = "notice"
+    base = dict(notice={}, busy=False, checked=False, notice_acknowledged=False, environment={})
+    page.render(dict(base))
+    assert page.ack.text() == "我已阅读，并了解适用范围与真实设备操作风险"
+    assert not page.check_button.isEnabled(), "未勾选阅读确认时不应能启动检查"
+    assert page.step_reason(base).startswith("请先勾选")
+
+    acked = dict(base, notice_acknowledged=True)
+    page.render(acked)
+    assert page.check_button.isEnabled()
+    assert page.step_reason(acked) == "请先运行启动检查。"
+
+    ready = dict(acked, checked=True, environment={"ready": True, "checks": []})
+    assert page.step_reason(ready) is None
+
+
+def test_footer_reads_back_hint_next(app):
+    """页脚顺序固定为：← 上一步 / 提示 / 下一步（下一步贴最右）。"""
+    from a6700win.gui.pages import NoticePage
+
+    page = NoticePage(_StubApp())
+    page.key = "notice"
+    page.update_steps(dict(busy=False, checked=False, notice_acknowledged=False, environment={}))
+    page.resize(900, 600)
+    page.show()
+    app.processEvents()
+    bar = page.footer.layout()
+    widgets = [bar.itemAt(i).widget() for i in range(bar.count())]
+    order = [index for index, widget in enumerate(widgets) if isinstance(widget, type(page.back_button))]
+    assert order == sorted(order), "页脚部件顺序必须与代码顺序一致"
+    names = [widget.text() if hasattr(widget, "text") else "" for widget in widgets if widget is not None]
+    assert names[0].startswith("←"), names
+    assert names[-1].startswith("下一步：驱动准备"), names
+    positions = [widget.mapTo(page, widget.rect().topLeft()).x() for widget in widgets if widget is not None]
+    assert positions == sorted(positions), f"页脚从左到右应为 上一步 → 提示 → 下一步，实际 {positions}"
+    page.close()

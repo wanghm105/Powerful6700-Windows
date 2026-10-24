@@ -59,13 +59,15 @@ class Page(QWidget):
         self.back_button.setObjectName("Ghost")
         self.back_button.clicked.connect(self._go_back)
         bar.addWidget(self.back_button)
+        bar.addStretch(1)
+        self.footer_hint = QLabel("")
+        self.footer_hint.setObjectName("Faint")
+        self.footer_hint.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        bar.addWidget(self.footer_hint)
         self.next_button = QPushButton("下一步")
         self.next_button.setObjectName("Primary")
         self.next_button.clicked.connect(self._go_next)
         bar.addWidget(self.next_button)
-        self.footer_hint = QLabel("")
-        self.footer_hint.setObjectName("Faint")
-        bar.addWidget(self.footer_hint, 1)
         outer.addWidget(self.footer)
 
         self.key = ""
@@ -124,11 +126,12 @@ class NoticePage(Page):
         self.sections_box = Card("须知内容")
         self.root.addWidget(self.sections_box)
 
-        self.ack = QCheckBox("我已阅读并了解上述范围与风险")
+        self.ack = QCheckBox("我已阅读，并了解适用范围与真实设备操作风险")
+        self.ack.setObjectName("Acknowledge")
         self.ack.toggled.connect(self._acknowledge)
         self.root.addWidget(self.ack)
 
-        self.env_card = Card("启动检查", "本地环境与资源")
+        self.env_card = Card("启动检查")
         self.env_rows = QVBoxLayout()
         self.env_rows.setSpacing(8)
         self.env_card.add_layout(self.env_rows)
@@ -150,18 +153,14 @@ class NoticePage(Page):
             meta.addWidget(value_label, row, 1)
             self.meta_labels[key] = value_label
         self.env_card.add_layout(meta)
-        self.root.addWidget(self.env_card)
 
-        actions = QHBoxLayout()
-        actions.setSpacing(10)
+        self.status = Pill("")
         self.check_button = QPushButton("开始启动检查")
         self.check_button.setObjectName("Primary")
         self.check_button.clicked.connect(lambda: self.app.check_environment())
-        actions.addWidget(self.check_button)
-        actions.addStretch(1)
-        self.status = Pill("")
-        actions.addWidget(self.status)
-        self.root.addLayout(actions)
+        self.env_card.header.addWidget(self.status)
+        self.env_card.header.addWidget(self.check_button)
+        self.root.addWidget(self.env_card)
         self.root.addStretch(1)
         self._rendered_sections = False
 
@@ -171,12 +170,12 @@ class NoticePage(Page):
         self.app.call_controller(lambda: self.app.controller.acknowledge_notice(bool(value)))
 
     def step_reason(self, snapshot: dict) -> str | None:
+        if not snapshot.get("notice_acknowledged"):
+            return "请先勾选「我已阅读」，再运行启动检查。"
         if not snapshot.get("checked"):
             return "请先运行启动检查。"
         if not (snapshot.get("environment") or {}).get("ready"):
             return "启动检查未全部通过，请按提示处理后重试。"
-        if not snapshot.get("notice_acknowledged"):
-            return "请先勾选上方的阅读确认。"
         return None
 
     def _go_next(self) -> None:
@@ -196,7 +195,6 @@ class NoticePage(Page):
 
         self._syncing = True
         acknowledged = bool(snapshot.get("notice_acknowledged"))
-        self.ack.setText(str(notice.get("acknowledgement", self.ack.text())))
         self.ack.setChecked(acknowledged)
         self._syncing = False
         self.ack.setEnabled(not snapshot.get("busy"))
@@ -224,7 +222,8 @@ class NoticePage(Page):
         checked = bool(snapshot.get("checked"))
         acknowledged = bool(snapshot.get("notice_acknowledged"))
         self.check_button.setText("重新运行启动检查" if checked else "开始启动检查")
-        if snapshot.get("busy"):
+        busy = bool(snapshot.get("busy"))
+        if busy:
             self.status.set_state("操作进行中", theme.WARNING)
         elif ready:
             self.status.set_state("环境就绪", theme.SUCCESS)
@@ -232,7 +231,9 @@ class NoticePage(Page):
             self.status.set_state("存在问题待处理", theme.DANGER)
         else:
             self.status.set_state("待检查", theme.TEXT_FAINT)
-        self.ack.setEnabled(self.ack.isEnabled() and checked)
+        self.check_button.setEnabled(acknowledged and not busy)
+        self.check_button.setToolTip(
+            "" if acknowledged else "请先勾选上方「我已阅读，并了解适用范围与真实设备操作风险」。")
 
     def _section(self, section: dict) -> QWidget:
         wrapper = QFrame()
@@ -280,7 +281,12 @@ class PreparationPage(Page):
 
         actions = QHBoxLayout()
         actions.setSpacing(10)
+        self.hint = QLabel("")
+        self.hint.setObjectName("Faint")
+        actions.addWidget(self.hint)
+        actions.addStretch(1)
         self.all_button = QPushButton("全部确认")
+        self.all_button.setObjectName("Ghost")
         self.all_button.clicked.connect(lambda: self.app.call_controller(
             lambda: self.app.controller.confirm_preparation(True)))
         actions.addWidget(self.all_button)
@@ -293,10 +299,6 @@ class PreparationPage(Page):
         self.inspect_button.setObjectName("Primary")
         self.inspect_button.clicked.connect(lambda: self.app.operate("inspect"))
         actions.addWidget(self.inspect_button)
-        actions.addStretch(1)
-        self.hint = QLabel("")
-        self.hint.setObjectName("Faint")
-        actions.addWidget(self.hint)
         self.root.addLayout(actions)
 
         self.log_card = Card("进度")
@@ -333,11 +335,15 @@ class PreparationPage(Page):
         done = sum(1 for step in steps if step.get("confirmed"))
         self.hint.setText(f"已确认 {done}/{len(steps)} 项")
         busy = bool(snapshot.get("busy"))
-        self.all_button.setEnabled(not busy)
-        self.clear_button.setEnabled(not busy)
-        self.inspect_button.setEnabled(bool(snapshot.get("ready")) and not busy)
-        if not snapshot.get("ready"):
+        all_confirmed = bool(steps) and done == len(steps)
+        ready = bool(snapshot.get("ready"))
+        self.all_button.setEnabled(not busy and not all_confirmed)
+        self.clear_button.setEnabled(not busy and done > 0)
+        self.inspect_button.setEnabled(ready and all_confirmed and not busy)
+        if not ready:
             self.inspect_button.setToolTip("请先在“操作前须知”页完成启动检查。")
+        elif not all_confirmed:
+            self.inspect_button.setToolTip("请先确认上方全部准备工作。")
         else:
             self.inspect_button.setToolTip("")
 
@@ -391,12 +397,13 @@ class HomePage(Page):
         self.backup_combo = QComboBox()
         self.backup_combo.setMinimumWidth(300)
         backup_row.addWidget(self.backup_combo, 1)
-        self.restore_button = QPushButton("恢复整份备份")
-        self.restore_button.clicked.connect(self._restore)
-        backup_row.addWidget(self.restore_button)
         self.backup_button = QPushButton("备份当前功能状态")
         self.backup_button.clicked.connect(lambda: self.app.operate("backup"))
         backup_row.addWidget(self.backup_button)
+        self.restore_button = QPushButton("恢复整份备份")
+        self.restore_button.setObjectName("Ghost")
+        self.restore_button.clicked.connect(self._restore)
+        backup_row.addWidget(self.restore_button)
         self.backup_card.add_layout(backup_row)
         self.backup_hint = WrapLabel("")
         self.backup_hint.setObjectName("Faint")
@@ -405,13 +412,11 @@ class HomePage(Page):
 
         actions = QHBoxLayout()
         actions.setSpacing(10)
-        self.unlock_button = QPushButton("解锁所选功能")
-        self.unlock_button.setObjectName("Primary")
-        self.unlock_button.clicked.connect(lambda: self.app.operate("unlock"))
-        actions.addWidget(self.unlock_button)
-        self.close_button = QPushButton("关闭所选功能")
-        self.close_button.clicked.connect(lambda: self.app.operate("close"))
-        actions.addWidget(self.close_button)
+        self.reconnect_button = QPushButton("断开连接")
+        self.reconnect_button.setObjectName("Ghost")
+        self.reconnect_button.clicked.connect(self._toggle_connection)
+        actions.addWidget(self.reconnect_button)
+        actions.addStretch(1)
         self.select_all = QPushButton("全选")
         self.select_all.setObjectName("Ghost")
         self.select_all.clicked.connect(lambda: self.app.select_features("all"))
@@ -420,11 +425,13 @@ class HomePage(Page):
         self.select_none.setObjectName("Ghost")
         self.select_none.clicked.connect(lambda: self.app.select_features("none"))
         actions.addWidget(self.select_none)
-        actions.addStretch(1)
-        self.reconnect_button = QPushButton("断开连接")
-        self.reconnect_button.setObjectName("Ghost")
-        self.reconnect_button.clicked.connect(self._toggle_connection)
-        actions.addWidget(self.reconnect_button)
+        self.close_button = QPushButton("关闭所选功能")
+        self.close_button.clicked.connect(lambda: self.app.operate("close"))
+        actions.addWidget(self.close_button)
+        self.unlock_button = QPushButton("解锁所选功能")
+        self.unlock_button.setObjectName("Primary")
+        self.unlock_button.clicked.connect(lambda: self.app.operate("unlock"))
+        actions.addWidget(self.unlock_button)
         self.root.addLayout(actions)
 
         self.log_card = Card("进度")
@@ -544,12 +551,12 @@ class ResultPage(Page):
         self.aftercare_card.setVisible(False)
         self.root.addWidget(self.aftercare_card)
         actions = QHBoxLayout()
+        actions.addStretch(1)
         self.home_button = QPushButton("返回功能管理")
         self.home_button.setObjectName("Primary")
         self.home_button.clicked.connect(lambda: self.app.call_controller(
             lambda: self.app.controller.home()) or self.app.goto("home"))
         actions.addWidget(self.home_button)
-        actions.addStretch(1)
         self.root.addLayout(actions)
         self.root.addStretch(1)
 

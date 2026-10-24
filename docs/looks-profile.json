@@ -1,7 +1,7 @@
 {
   "schema": "a6700win/looks/1",
   "updated": "2026-10-25",
-  "notes": "CC/NC 已通过逐色相验收（RMS 0.194 / 0.190）；PF/NF 为轻量版，只能压整体饱和。pairs 里的 index 是 12 组 (Cb,Cr) 中的第几组。 record_hex 是写入值、factory_hex 是出厂值（各 64 字节），GUI 直接按这两份十六进制写入，不依赖固件副本。",
+  "notes": "CC/NC 为逐色相拟合（定稿 RMS 0.183 / 0.173），PF/NF 是轻量的低饱和近似（0.189 / 0.330）。slot 是相机菜单里的槽位名，label 是对应的胶片外观名，GUI 直接用这两项讲清楚「从什么变成什么」。record_hex 是写入值、factory_hex 是出厂值，各 64 字节；GUI 只按这两份十六进制改写 CP 单元，还原时逐字节写回 factory_hex，不依赖固件副本。",
   "looks": [
     {
       "name": "CC",
@@ -15,9 +15,11 @@
           "factor": 0.52
         }
       ],
-      "rms": 0.194,
+      "rms": 0.183,
       "record_hex": "2dfffdfe34ffcdffd60007013302ed01260030008aff00001900d5ff0000c6ff0000430014000000340096ff00009bff00000000000000000000000000000000",
-      "factory_hex": "2dfffdfe34ffcdff9c01f9013302ed01260030008aff00001900d5ff0000c6ff0000430014000000340096ff00009bff00000000000000000000000000000000"
+      "factory_hex": "2dfffdfe34ffcdff9c01f9013302ed01260030008aff00001900d5ff0000c6ff0000430014000000340096ff00009bff00000000000000000000000000000000",
+      "slot": "PT（人像）",
+      "label": "富士 Classic Chrome（CC）"
     },
     {
       "name": "NC",
@@ -31,9 +33,11 @@
           "factor": 0.62
         }
       ],
-      "rms": 0.19,
+      "rms": 0.173,
       "record_hex": "31fff3fee9fecdff0c011e0133028101fdff160090ffc7ff1500c8ff0000d6ffaeff0b006700e5ff15008aff0000c7ff00000000000000000000000000000000",
-      "factory_hex": "31fff3fee9fecdffb101cd0133028101fdff160090ffc7ff1500c8ff0000d6ffaeff0b006700e5ff15008aff0000c7ff00000000000000000000000000000000"
+      "factory_hex": "31fff3fee9fecdffb101cd0133028101fdff160090ffc7ff1500c8ff0000d6ffaeff0b006700e5ff15008aff0000c7ff00000000000000000000000000000000",
+      "slot": "NT（中性）",
+      "label": "富士 Classic Negative（NC）"
     },
     {
       "name": "PF",
@@ -47,9 +51,11 @@
           "factor": 0.75
         }
       ],
-      "rms": null,
+      "rms": 0.189,
       "record_hex": "edfe4cff56ff040040019f014f02000266005600b5ff72001700bcff0000c0fff3ff530040007200140087ff0000abff00000000000000000000000000000000",
-      "factory_hex": "fafe55ff5eff040096010f023302e80161005200b9ff6d001600bfff0000c3fff4ff4f003d006d0013008dff0000afff00000000000000000000000000000000"
+      "factory_hex": "fafe55ff5eff040096010f023302e80161005200b9ff6d001600bfff0000c3fff4ff4f003d006d0013008dff0000afff00000000000000000000000000000000",
+      "slot": "VV（鲜艳）",
+      "label": "理光 Positive Film（正片）"
     },
     {
       "name": "NF",
@@ -63,9 +69,11 @@
           "factor": 0.85
         }
       ],
-      "rms": null,
+      "rms": 0.33,
       "record_hex": "74ff6eff95ff5affad00fb005d015801ffff0b009eff56000c00cdfff1ffa4ff01002200fcff70003600ccffedffa3ff00000000000000000000000000000000",
-      "factory_hex": "1eff15ff54fff5fe4701dc0133022b02feff120062ff8a001400aeffe8ff6cff02003700faffb5005700acffe2ff6aff00000000000000000000000000000000"
+      "factory_hex": "1eff15ff54fff5fe4701dc0133022b02feff120062ff8a001400aeffe8ff6cff02003700faffb5005700acffe2ff6aff00000000000000000000000000000000",
+      "slot": "VV2（鲜艳 2）",
+      "label": "理光 Negative Film（负片）"
     }
   ]
 }
