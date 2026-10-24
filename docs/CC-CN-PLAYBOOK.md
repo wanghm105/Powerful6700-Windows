@@ -1,5 +1,7 @@
 # 外观（Creative Look）改造手册 —— 名字与颜色
 
+> **缩写说明**：早期研究阶段的内部代号写作 `CN` = Classic Negative；软件界面、README 与相机菜单统一写 `NC`。文件名（`docs/CC-CN*.md`、`tools/apply_cc_cn.py`）保留历史名，不改。
+
 > 本文件是操作手册：记录**怎么改**名字、**怎么改**颜色、**怎么还原**。
 > 当前状态（2026-10-24）：**已全部还原到出厂** —— 色度单元 `0x02A40001` = 出厂副本
 > `sha256 72d3da86…`，菜单名回到 ST/PT/NT/VV/VV2/FL/IN/SH/BW/SE + 6 个自定义位。
@@ -21,7 +23,7 @@
 - 记录区起点 `base = (16 + count * 2 + 3) & ~3`（本文件 0x2574）。
 - 每条记录：`u32 rid | (0x1E << 24)` + UTF-8 文本 + `\0` + 4 字节对齐补齐。
 - **能力上限（易踩）**：容量 = **下一条记录的起始偏移 − 本记录偏移 − 4**。
-  用 `NUL 位置` 算会低估（我们就是这样把 `CN → VV2` 判成「容量不足」）。
+  用 `NUL 位置` 算会低估（我们就是这样把 `NC → VV2` 判成「容量不足」）。
 - 改名只能**变短或等长**；变长必须整体后移、改 count 并重算索引（未验证，不建议）。
 
 ### 外观短名所在的记录（`string_simplifiedchinese_f.uxc`）
@@ -50,7 +52,7 @@
 4. 再 `read_range` 整体回读比对，不一致就报错。
 5. 会话结束发 `STOP_SENSER`，相机掉回 0x096F，需手动切 MSC。
 
-工具：`tools/look_name.py`（单条改，含 ChannelBackend）、`tools/apply_cc_cn.py`（CC/CN 一键）、
+工具：`tools/look_name.py`（单条改，含 ChannelBackend）、`tools/apply_cc_cn.py`（CC/NC 一键）、
 `tools/restore_original.py`（一键还原）。
 
 ## 2. 颜色：CP 单元 `0x02A40001` 的布局
@@ -110,7 +112,7 @@ MSYS_NO_PATHCONV=1 PYTHONIOENCODING=utf-8 ./.venv/Scripts/python.exe tools/resto
 ```
 
 - 色度：整块写回 `../firmware/cp/unit-02a40001.backup-def.bin`（工厂副本，从 `/setting/def/BACKUP.BIN` 0x1B2140 抽出）。
-- 名字：`CC→VV`、`CN→VV2`（`PT/NT` 在改名流程里已先恢复）。
+- 名字：`CC→VV`、`NC→VV2`（`PT/NT` 在改名流程里已先恢复）。
 - 备份清单：`firmware/cp/unit-02a40001.backup-def.bin`、`firmware/uxc/string_simplifiedchinese_f.uxc.20261023T233448Z.bin`。
 
 ## 4. 现有工具
@@ -122,7 +124,7 @@ MSYS_NO_PATHCONV=1 PYTHONIOENCODING=utf-8 ./.venv/Scripts/python.exe tools/resto
 | `tools/cp_restore_unit.py` | 逐槽比对 + 整块写回 | 
 | `tools/cp_bank_probe.py` | 探测/涂色/清零 bank |
 | `tools/look_name.py` | 改单条 UXC 名字 |
-| `tools/apply_cc_cn.py` | CC/CN 一键（当前配方：VV=PT×0.6、VV2=NT×0.8） |
+| `tools/apply_cc_cn.py` | CC/NC 一键（当前配方：VV=PT×0.6、VV2=NT×0.8） |
 | `tools/restore_original.py` | 一键还原名字 + 颜色 |
 | `tools/uxc.py` | UXC 解码/查找/就地改名 |
 

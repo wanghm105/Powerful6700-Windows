@@ -17,8 +17,8 @@ python tools/looks_apply.py --confirm yes-write   # 相机切到 USB 存储模�
 
 | 菜单项 | 名称（已改写） | 内容来源 | 验收 |
 | --- | --- | --- | --- |
-| PT（第 2 项） | Classic Chrome | 出厂 bank6 × 1.00，pair2 × 0.52 | 逐色相 RMS **0.194** |
-| NT（第 3 项） | Classic Negative | 出厂 bank4 × 1.00，pair2 × 0.62 | 逐色相 RMS **0.190** |
+| PT（第 2 项） | Classic Chrome | 出厂 bank6 × 1.00，pair2 × 0.52 | 逐色相 RMS **0.183** |
+| NT（第 3 项） | Classic Negative | 出厂 bank4 × 1.00，pair2 × 0.62 | 逐色相 RMS **0.173** |
 | VV（第 4 项） | Positive Film | 出厂 bank1 × 1.05，pair2 × 0.75 | 轻量版（低饱和） |
 | VV2（第 5 项） | Negative Film | 出厂 bank14 × 0.62，pair2 × 0.85 | 轻量版（低饱和） |
 
@@ -72,7 +72,7 @@ python .data/hue_eval.py <ST.jpg> <LOOK.jpg>     # 输出 12 档比值、最优�
 | 想要 | 现实 |
 | --- | --- |
 | 富士的 S 形影调 | **做不到**。A6700 无可用伽马层：cpapp 里 9 条 1024 B 恒等斜坡（`0xfe0b50` 起）改成 gamma 2.2 后实拍与屏幕均无变化，是死数据。 |
-| NC 的窄带品红缺口（0.34） | **只能近似**。目标形状靠 pair2 的宽下压逼近到 RMS 0.190；真正的窄带需要逐色相权威，而 `0x02A4000D` 做不到（见下）。 |
+| NC 的窄带品红缺口（0.34） | **只能近似**。目标形状靠 pair2 的宽下压逼近到 RMS 0.173；真正的窄带需要逐色相权威，而 `0x02A4000D` 做不到（见下）。 |
 | 理光正片的「压红抬黄绿」、负片的「压红压蓝但抬正蓝」 | **做不到**，停在低饱和轻量版。 |
 | `.cube` 直接导入 | **做不到**。相机只吃自己的色度表；A7C2 的 `.a7look`（缺 curve/matrix/chroma 三层）与 `.dcp`（Adobe PCS 线性 RGB 的 HSV 空间）都无法搬到 12 组 (Cb,Cr) 模型。 |
 
@@ -89,7 +89,7 @@ python .data/hue_eval.py <ST.jpg> <LOOK.jpg>     # 输出 12 档比值、最优�
 1. `python tools/cp_verify_factory.py` —— 逐单元与 `/setting/def/BACKUP.BIN` 的出厂副本比对；
 2. `python tools/restore_units.py` —— 把出厂值写回 CP RAM；
 3. **正常关机再开机** —— 相机才会把 RAM 覆盖进 `/setting/BACKUP.BIN`（少了这步会出现"当场对、重启又变"）；
-4. 名称还原用 `firmware/uxc/` 里的时间戳备份。
+4. 名称还原：把 `firmware/uxc/string_simplifiedchinese_f.uxc.20261023T233448Z.bin`（145,612 B，sha256 fe263360c15b5530）写回 `/usr/share/app/string_simplifiedchinese_f.uxc`，**写完必须 truncate 到 145,612 B**（相机当前是 145,692 B），再回读比对；GUI 暂无按钮，用 `tools/uxc_grow.py`（写）+ `a6700win.flash.truncate`（截断）完成。
 
 ## 8. 工具索引
 
@@ -123,7 +123,7 @@ python .data/hue_eval.py <ST.jpg> <LOOK.jpg>     # 输出 12 档比值、最优�
 
 判读：
 
-- **CC / NC 达到可用**：中段八档（60°–270°）误差 0.03–0.09，RMS 0.183 / 0.173，与上一轮（0.194 / 0.190）一致，配方可复现。
+- **CC / NC 达到可用**：中段八档（60°–270°）误差 0.03–0.09，RMS 0.183 / 0.173，与上一轮实测一致（0.183 / 0.173），配方可复现。
 - **蓝端是硬边界**：CC 在 0–30° 与 330–360° 实测 0.95 / 1.06，目标 0.77 / 0.53；NC 同样偏高。这一端由 bank 记录之外的白点/矩阵层决定，pair 与整体系数都压不动（见 LOOK-COLOR.md §11）。
 - **PF / NF 只是低饱和版**：逐色相几乎平（PF 1.14–1.41，NF 0.75–1.38），缩放后 RMS 0.19 / 0.33。PF 目标里的「压红抬黄绿」、NF 目标里的「压红压蓝但抬正蓝」都是局部反向，pair 基函数叠加不出来，已记录为能力边界。
 - 本轮 FL / IN / SH / SE 一并留档，用于确认改动只落在四个目标槽，其余外观未受影响。

@@ -39,10 +39,10 @@
 ### UXC 名字已完全还原
 
 `/usr/share/app/string_simplifiedchinese_f.uxc`（145,612 B）实时 sha256 前缀 `fe263360`，与最早的原件备份 `firmware/uxc/string_simplifiedchinese_f.uxc.20261023T233448Z.bin` **逐字节相同**。
-（此前以为 07:51 的 `/usr` 备份里已是 CC/CN，实际那次写入因脚本漏写根本没生效，所以这份基线本身就是原名。）
+（此前以为 07:51 的 `/usr` 备份里已是 CC/NC，实际那次写入因脚本漏写根本没生效，所以这份基线本身就是原名。）
 
 ## 结论
 
 1. **内容层面，相机闪存已经回到出厂状态**：`appFw.so`、`cpapp-b.bin`、`*.uxc` 全部与备份一致；CP 颜色单元 RAM/持久副本一致。
 2. 剩余差异只有三类，都不影响成像：`cpapp-b.bin` 的目录项时间戳、`/usr` 三个 inode 时间戳、`/setting` 的用户设置与人脸注册数据。
-3. 下一轮做 CC/CN 时，改前先跑一次 `tools/full_compare.py cp setting` 存基线，改后再跑一次即可得到「这一轮究竟动了哪些字节」。
+3. 下一轮做 CC/NC 时，改前先跑一次 `tools/full_compare.py cp setting` 存基线，改后再跑一次即可得到「这一轮究竟动了哪些字节」。

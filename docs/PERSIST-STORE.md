@@ -134,14 +134,14 @@
 
 ---
 
-## 7. 这对 CC/CN 意味着什么
+## 7. 这对 CC/NC 意味着什么
 
 | 需求 | 载体 | 现状 |
 | --- | --- | --- |
 | 颜色倾向（矩阵 + 色度） | CP 单元 0x02a40001 / 0x02a4000d | 可读可写（RAM），**已证明会掉电恢复** |
 | 持久化颜色 | nflasha2:\BACKUP.BIN（相机自己回写） | 已定位；我们还没有写 flash 的能力 |
-| 色调（CC/CN 的 S 曲线） | cpapp 曲线记录 / appFw 管线 | 曲线记录位置已找到但恒等，语义未验证 |
-| 外观文字（CC/CN 的名字） | nflasha15 的 `/usr/share/app/string_*.uxc` | 格式已解码，**需要写 flash 才能改名** |
+| 色调（CC/NC 的 S 曲线） | cpapp 曲线记录 / appFw 管线 | 曲线记录位置已找到但恒等，语义未验证 |
+| 外观文字（CC/NC 的名字） | nflasha15 的 `/usr/share/app/string_*.uxc` | 格式已解码，**需要写 flash 才能改名** |
 | 外观参数（contrast/fade…） | 未定位，最可能在 nflasha15 | 需要先全量 dump nflasha15 |
 
 **因此下一步的顺序是**：先把 nflasha15 全量只读 dump 下来（749,731,840 B，只读、无风险），在它的 ext2 文件系统里找 `setting/` 与外观参数的实际落点；有了落点再谈写 flash 的载荷。
@@ -168,7 +168,7 @@
 
 **关键负结果**：nflasha15 的 `/data/lut` 与 `/data/gridline` 都是**空目录**（相机自带的 LUT 目录没有被使用），nflasha7 的 `setting/` 在镜像里也是空的。也就是说：**外观参数（contrast/fade…）没有以文件形式出现在我们 dump 到的任何卷里**，最可能是关机时从 RAM 刷入、而两次 dump 都没赶上那次刷写；也可能是我们还没识别出承载它的那一段（`BACKUP.BIN` 0x664c0 一带是带 0x7f 高位的运行时指针，属 RAM 残渣，不是结构化参数表）。
 
-因此「外观参数落盘」仍然**未闭环**；要闭环需要一次「改参数 → 正常关机 → 开机 → dump」的对比。但它已经不影响 CC/CN 的判断：真正的观感差异来自管线（appFw 矩阵 / cpapp 曲线），两者都要写 flash。
+因此「外观参数落盘」仍然**未闭环**；要闭环需要一次「改参数 → 正常关机 → 开机 → dump」的对比。但它已经不影响 CC/NC 的判断：真正的观感差异来自管线（appFw 矩阵 / cpapp 曲线），两者都要写 flash。
 
 ## 追加：CP RAM 写入的持久性被推翻（2026-10-24）
 
@@ -178,4 +178,4 @@
   1. CP RAM 的写入**不是必然持久**，取决于是否触发机身自身的「保存」路径；
   2. 上一次写入用的是自写脚本，结尾没有走 STOP_SENSER（正常退出服务模式），可能因此被丢弃；
   3. 任何 CP 写入实验都应走 `tools/cp_patch.py` / `cp_write.py`（它们会发 STOP_SENSER），并在关机前后各读一次 RAM + BACKUP 才能下结论。
-- 对产品的影响：靠「写 CP RAM 让 CC/CN 长期存在」不成立；要么写 `/setting/BACKUP.BIN`（boot 时被读入），要么走 A7C2 的 cpapp 固件路线。
+- 对产品的影响：靠「写 CP RAM 让 CC/NC 长期存在」不成立；要么写 `/setting/BACKUP.BIN`（boot 时被读入），要么走 A7C2 的 cpapp 固件路线。

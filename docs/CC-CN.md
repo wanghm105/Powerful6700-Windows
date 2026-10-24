@@ -1,8 +1,10 @@
 > **本文是过程记录，结论已收敛。** 最终能力、配方、验收口径与还原步骤见 [LOOKS.md](LOOKS.md)；全部实测数据与失败路径见 [LOOK-COLOR.md](LOOK-COLOR.md)。文中 §2 的槽位账本有两条已被后续二分更正（VV2 = bank 14，IN/SH 不共用 VV2 槽），以 LOOKS.md 为准。
 
-# CC / CN 外观落地（A6700 + 固件 2.00）
+# CC / NC 外观落地（A6700 + 固件 2.00）
 
-目标：让 A6700 的外观菜单里出现 **CC / CN** 两项，观感来自相机 SD 卡里的
+> **缩写说明**：早期研究阶段的内部代号写作 `CN` = Classic Negative；软件界面、README 与相机菜单统一写 `NC`。文件名（`docs/CC-CN*.md`、`tools/apply_cc_cn.py`）保留历史名，不改。
+
+目标：让 A6700 的外观菜单里出现 **CC / NC** 两项，观感来自相机 SD 卡里的
 `Fuji_CC.cube` / `Fuji_CN.cube`（已取回本机：`firmware/lut/Fuji_CC.cube` 1,020,400 B、
 `firmware/lut/Fuji_CN.cube` 1,002,584 B，均为 LUT_3D_SIZE 33、无 DOMAIN、值域 0..1）。
 
@@ -46,8 +48,8 @@
 ## 4. 落地顺序
 
 1. （进行中）验证记录结构：NT ← SE。
-2. 用 `Fuji_CC.cube` / `Fuji_CN.cube` 拟合出槽 6（PT→CC）、槽 4（NT→CN）的矩阵 + 色度并写入。
-3. 改短码：`PT → CC`、`NT → CN`（`string_simplifiedchinese_f.uxc`，同长度就地改）。
+2. 用 `Fuji_CC.cube` / `Fuji_CN.cube` 拟合出槽 6（PT→CC）、槽 4（NT→NC）的矩阵 + 色度并写入。
+3. 改短码：`PT → CC`、`NT → NC`（`string_simplifiedchinese_f.uxc`，同长度就地改）。
 4. 正常关机 → 相机把 CP 单元固化进 `/setting/BACKUP.BIN`；重启验收。
 5. 回滚：任一时刻可用 `firmware/cp/live/*.bin` 写回，或从 `firmware/setting/BACKUP-live.bin` 恢复。
 
@@ -74,7 +76,7 @@
 - **全 0 = 完全去色**（实测：PT/NT 变近乎黑白，只余极淡色偏）。因此这 8 个数是
   「灰度基座 + 色度幅度」的编码：值越大彩色越浓，0 就是黑白。
 - **按同一比例 alpha 缩放工厂系数 = 线性降低彩色浓度**，亮度与白点不变。
-  实测 alpha=0.60（PT→CC）与 0.80（NT→CN）一次成立，蓝色不再溢出。
+  实测 alpha=0.60（PT→CC）与 0.80（NT→NC）一次成立，蓝色不再溢出。
 - 之前那次「50% 等权去饱和」导致蓝色溢出，不是模型问题，是我给的系数
   比例与符号都不对（e/f 写成负数），等于在灰度基座上乱加色。
 
@@ -98,9 +100,9 @@
 | rid | 原文 | 新文 | 文件偏移（文字起点） |
 | --- | --- | --- | --- |
 | 0x021c6654 | PT | CC | 0xda98 |
-| 0x021c6434 | NT | CN | 0xa210 |
+| 0x021c6434 | NT | NC | 0xa210 |
 | 0x021c6f8b | PT | CC | 0x1de9c |
-| 0x021c7002 | NT | CN | 0x1e684 |
+| 0x021c7002 | NT | NC | 0x1e684 |
 
 - 备份：`firmware/uxc/string_simplifiedchinese_f.uxc.<stamp>.bin`（改前原始资源）
 - 工具：`tools/look_name.py`（`--show` 列名、`--set RID=NAME --confirm yes-write` 写入、
@@ -132,7 +134,7 @@ A7C2 就是往 cpapp 写 3,872 字节曲线记录才做到的。
 1. 只改 **一个 bank、一个端点、一个槽** 的 6 个 int16（其余保持工厂值），
    确认画面有可归因的变化；
 2. 若无效 → 该层在此固件未启用，B 版放弃，改走 gamma 层路线（需碰 cpapp，属改固件）；
-3. 若有效 → 用 16 槽做按色相分区的降饱和，得到 CC/CN 的辨识度。
+3. 若有效 → 用 16 槽做按色相分区的降饱和，得到 CC/NC 的辨识度。
 
 ## 8. 第三次路线修正（CC1 的真实语义与两次失败）
 
@@ -168,7 +170,7 @@ v6 在全部 10 个基础外观里恒为 563（SE 是 558），是固定基座�
 
 ### 8.5 结论与后续可选路线
 
-1. CC1（运行时、零风险）：最多做温和的按色相彩度调整，只能给出细微差别，做不出 CC/CN；
+1. CC1（运行时、零风险）：最多做温和的按色相彩度调整，只能给出细微差别，做不出 CC/NC；
 2. block13（运行时）：此固件实测整块清零画面无变化 → 该层未启用，放弃；
 3. gamma 曲线（cpapp 初始化数据，改固件）：A7C2 的正解，需要写 /cp/cpapp-b.bin。写入能力已具备（src/a6700win/flash.py，含截断/追加、回读校验、断电实测持久），缺的是 A6700 侧的曲线记录偏移与格式，需要继续静态定位；
-4. 现状保留：菜单名 CC/CN（UXC 已改）+ CC1 温和降饱和，作为「可用但不等价」的成品。
+4. 现状保留：菜单名 CC/NC（UXC 已改）+ CC1 温和降饱和，作为「可用但不等价」的成品。
