@@ -33,12 +33,15 @@
 #define SYS_WRITE 64L
 #define SYS_FSYNC 82L
 #define SYS_LSEEK 62L
+#define SYS_GETDENTS64 61L
+#define O_DIRECTORY 0x10000L
 #define SEEK_END 2L
 
 static const char result_path[] = "/tmp/jiritsu/tmmc.jit";
 static unsigned char request[HEADER + PATH_MAX];
 static unsigned char result[HEADER + DATA_MAX];
 static char path_buf[PATH_MAX + 1u];
+static unsigned char dirbuf[4096];
 
 static long call4(long n, long a, long b, long c, long d) {
     register long x8 __asm__("x8") = n;
@@ -104,7 +107,7 @@ __attribute__((constructor)) static void run(void) {
     unsigned mode = get32(8);
     unsigned path_len = get32(12);
     unsigned length = get32(24);
-    if (path_len == 0 || path_len > PATH_MAX || mode > 1 || (mode == 0 && length > DATA_MAX)) {
+    if (path_len == 0 || path_len > PATH_MAX || mode > 2 || (mode == 0 && length > DATA_MAX)) {
         publish(4, mode, 0, 0);
         return;
     }
@@ -115,6 +118,38 @@ __attribute__((constructor)) static void run(void) {
     if (!ok) { publish(1, mode, 0, 0); return; }
     for (unsigned i = 0; i < path_len; i++) path_buf[i] = (char)request[HEADER + i];
     path_buf[path_len] = 0;
+
+    if (mode == 2) {
+        long dir = call4(SYS_OPENAT, AT_FDCWD, (long)path_buf, O_DIRECTORY, 0);
+        if (dir < 0) { publish(2, mode, 0, 0); return; }
+        unsigned out = 0;
+        int more = 1;
+        while (more) {
+            long n = call4(SYS_GETDENTS64, dir, (long)dirbuf, (long)sizeof(dirbuf), 0);
+            if (n <= 0) break;
+            long pos = 0;
+            while (pos + 19 <= n) {
+                unsigned char *entry = dirbuf + pos;
+                unsigned reclen = (unsigned)entry[16] | ((unsigned)entry[17] << 8);
+                if (reclen < 20u || reclen > (unsigned)(n - pos)) { more = 0; break; }
+                const char *name = (const char *)(entry + 19);
+                unsigned len = 0;
+                while (name[len] && len < 255u) len++;
+                int skip = (len == 1u && name[0] == '.')
+                        || (len == 2u && name[0] == '.' && name[1] == '.');
+                if (!skip && out + len + 2u <= DATA_MAX) {
+                    for (unsigned i = 0; i < len; i++) result[HEADER + out++] = (unsigned char)name[i];
+                    if (entry[18] == 4u) result[HEADER + out++] = '/';
+                    result[HEADER + out++] = 10;
+                }
+                pos += reclen;
+            }
+            if (out >= DATA_MAX) break;
+        }
+        call4(SYS_CLOSE, dir, 0, 0, 0);
+        publish(0, mode, 0, out);
+        return;
+    }
 
     long file = call4(SYS_OPENAT, AT_FDCWD, (long)path_buf, 0, 0);
     if (file < 0) { publish(2, mode, 0, 0); return; }

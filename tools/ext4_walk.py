@@ -22,6 +22,21 @@ S_IFMT = 0o170000
 S_IFDIR = 0o040000
 
 
+class LocalImage:
+    """把本机镜像文件包装成和 ServiceSession 一样的 read_range 接口。
+
+    这样同一个 Ext2 解析器既能跑在真机上（服务模式读 /dev/nflashaXX），
+    也能跑在已经 dump 下来的 firmware/parts/*.bin 上。
+    """
+
+    def __init__(self, path: Path) -> None:
+        self.handle = path.open("rb")
+
+    def read_range(self, _device, offset, length):
+        self.handle.seek(offset)
+        return {"data": self.handle.read(length)}
+
+
 class Ext2:
     def __init__(self, session, device):
         self.session = session
@@ -124,6 +139,7 @@ class Ext2:
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="相机 ext2/ext4 只读遍历")
+    parser.add_argument("--local", type=Path, help="本机镜像文件（离线解析，不连相机）")
     parser.add_argument("--device", default="/dev/nflasha15")
     parser.add_argument("--list", default="")
     parser.add_argument("--get", default="")
@@ -134,8 +150,17 @@ def main(argv=None):
     def progress(message):
         print(message, flush=True)
 
-    with ServiceSession(progress=progress) as session:
-        fs = Ext2(session, args.device)
+    import contextlib
+
+    with contextlib.ExitStack() as stack:
+        if args.local is not None:
+            source = LocalImage(args.local)
+            stack.callback(source.handle.close)
+            device = "local"
+        else:
+            source = stack.enter_context(ServiceSession(progress=progress))
+            device = args.device
+        fs = Ext2(source, device)
         print(
             f"块大小 {fs.block_size} · inode {fs.inodes} · 每组 {fs.inodes_per_group} inode / "
             f"{fs.blocks_per_group} 块 · inode 大小 {fs.inode_size}",

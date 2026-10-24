@@ -1,7 +1,7 @@
 {
   "payload": "dump_range.elf",
-  "sha256": "040916c1f9fd80be9f2eded7f93c051742e50769408b9b5d6fc6047edeb63a82",
-  "bytes": 15600,
+  "sha256": "ff46f66262b03a349dd560eb508e067d61e74bfcedefaa98a20311258468ea79",
+  "bytes": 18528,
   "source": "dump_range.c",
   "compiler": "zig 0.13.0 (aarch64-freestanding + ld.lld)",
   "mode": "read-only: opens O_RDONLY, no pwrite64 path"

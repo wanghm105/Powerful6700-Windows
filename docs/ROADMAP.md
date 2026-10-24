@@ -72,4 +72,9 @@ RAM 探测（19 个 CP 单元全部读出并写入验证）。完整记录见 `d
 | FL2/FL3：UI 文本探针 | **已完成，判定不可行**（`FL2-ROUTE.md` §4） |
 | FL2/FL3：CP tone 单元定位 + cpapp 静态定位 | 进行中，判据写在 `FL2-ROUTE.md` §9 |
 | 只读研究：appFw.so、11 个分区全量 + nflasha15 头部、19 个 CP 单元 | 全部完成，证据见 `VALIDATION.md` |
+| 自定义外观 CC / NC（改 CP 色度 + 改菜单名） | **已完成并验收**：CC RMS 0.194、NC RMS 0.190，见 `LOOKS.md` |
+| 理光正片 / 负片（VV / VV2） | 低饱和轻量版；局部形状（压红抬黄绿等）做不到，见 `LOOK-COLOR.md` §11 |
+| 0x02A4000D 的 16 个块 | **已探明但不采用**：block2=VV、block3=NT、block4=仅 PT 蓝端；基线量级改动测不出来，属细调增量表 |
+| cpapp 9 条 1024 B 斜坡（gamma 层） | **已证伪**：改成 gamma 2.2 后实拍与屏幕均无变化，是死数据 |
+| 富士 S 形影调 / .cube·DCP 导入 | 判定不可行：无伽马层；A7C2 的 .a7look 缺三层、.dcp 在 Adobe PCS 空间 |
 | 卡速限制（V60） | 只做过静态调查，结论「没有可改的默认档位」，见 `CARD-SPEED.md` |

@@ -167,6 +167,14 @@ def read_range(backend, path: str, offset: int = 0, length: int = CHUNK, elf: by
                                   _request(path, offset, length, 0)))
 
 
+def list_dir(backend, path: str, elf: bytes | None = None) -> list[str]:
+    """列出相机上的一个目录（mode 2）；目录名以 / 结尾，其余为文件名。"""
+    result = _parse_result(_execute(backend, elf if elf is not None else payload(),
+                                    _request(path, 0, 0, 2)))
+    text = result["data"].decode("utf-8", "replace")
+    return [line for line in text.split(chr(10)) if line]
+
+
 def stat(backend, path: str, elf: bytes | None = None) -> int:
     return _parse_result(_execute(backend, elf if elf is not None else payload(),
                                   _request(path, 0, 0, 1)))["size"]

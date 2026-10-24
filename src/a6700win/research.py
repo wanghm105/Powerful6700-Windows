@@ -89,6 +89,9 @@ class ServiceSession:
     def read(self, absolute_path: str):
         return dump.camera_file(self.channel, absolute_path)
 
+    def list_dir(self, absolute_path: str) -> list[str]:
+        return dump.list_dir(self, absolute_path)
+
     def stat(self, absolute_path: str) -> int:
         return dump.stat(self, absolute_path)
 

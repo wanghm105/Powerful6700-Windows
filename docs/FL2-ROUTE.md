@@ -9,11 +9,11 @@
 
 1. **颜色层可达但价值不足**：CP 单元 `0x02a40001` / `0x02a4000d` 的读写在真机上跑通，改完立刻可见、掉电恢复。
    但只改色度 / 矩阵 ≈ 相机内的「饱和度」滑块，用户当场判定「我在相机里也能改」。
-2. **「菜单里出现 FL2/FL3 字样」已判定不可行**（§4，探针已完成）：外观资源 id 只有 1..11 且无空位，
+2. **「菜单里出现 FL2/FL3 字样」已判定不可行**（`4，探针已完成）：外观资源 id 只有 1..11 且无空位，
    显示文字在整个机身里都不是明文；A7C2 能做是因为它固件出厂就带这两项，工具只打开开关。
 3. **真正要做出 FL2/FL3 的观感，缺的是 gamma（色调曲线）这一层**。A7C2 把它编译进 cpapp 的初始化数据，
-   运行时只写 chroma + 矩阵；A6700 的对应物（gamma 表 / 参数 55-56 槽 / chroma 白名单）尚未定位（§6 第 ② 层）。
-4. **可写面已从 2 个单元扩到 19 个**（§2）。如果某个 CP 单元承载 tone 曲线，就能不写 flash 做出「像素上像 FL2」的外观。
+   运行时只写 chroma + 矩阵；A6700 的对应物（gamma 表 / 参数 55-56 槽 / chroma 白名单）尚未定位（`6 第 ② 层）。
+4. **可写面已从 2 个单元扩到 19 个**（`2）。如果某个 CP 单元承载 tone 曲线，就能不写 flash 做出「像素上像 FL2」的外观。
 
 ## 1. 静态定位（已确认）
 
@@ -29,21 +29,16 @@
   A7C2 只是把上限 9→11 并追加 mode 0x13 / 0x14。
 - 该函数既没有 `bl` 调用者，也没有 rela addend / u64 指针指向它 → 只能被间接派发（别再用 bl 扫描找调用者）。
 
-### 1.2 appFw：外观资源的 id 表
+### 1.2 appFw：外观标签族与 16 个外观槽位
 
-`0x49e34d0` 起是 16 字节记录表 `{char* key, 0, u32 id, u32 strlen}`，共 11 条外观记录：
+**（2026-10-24 纠正）** 这里原先写的是「`0x49e34d0` 起是 11 条外观记录表」，**这是错的**：`0x49e34d0` 的记录是 `RECORD_SETTING_600M_422_10BIT` … `150M_420_8BIT`，属于码率/记录设置表。
 
-```
-id=1  AUTO_CUSTOMIZE_CREATIVE_LOOK_AUTO
-id=2  ..._STANDARD        id=7  ..._FILM
-id=3  ..._PORTRAIT        id=8  ..._RETRO
-id=4  ..._NEUTRAL         id=9  ..._AIRY
-id=5  ..._VIVID           id=0xa ..._BLACK_WHITE
-id=6  ..._BRILLIANT       id=0xb ..._SEPIA
-id=0xc 已是 BASE_ISO_SENSITIVITY_DISPLAY_ON（不是外观）
-```
+真正的外观标签在资源名字典里：
 
-→ **外观资源 id 只有 11 个，紧邻的下一个 id 已被别的资源占用**，见 §4。
+- `VAL_setting_creative_style_plus_CREATIVE_STYLE_PLUS_STANDARD` 的字符串在 `0x42087aa`，字面量槽在 **`0x4926e40`**（另有 `0x7e6620`）。从 `0x4926e40` 起是 16 字节记录 `{char* name, 0}`，依次是 STANDARD / PORTRAIT / NEUTRAL / VIVID / BRILLIANT / FILM / RETRO / AIRY / BLACK_WHITE / SEPIA，再接 CREATIVE_BOX 1-6、INVALID、PRM_ALL。
+- 紧接着 `0x4926ed0` 起是 `VAL_creative_look_option_look0 … look15`，**每个 lookN 都带 10 个基础外观名**（16 组 × 10 = 160 条）；同族还有 `creative_look_option_{contrast,fade,clarity,fineness,…}0..15`。
+
+→ **A6700 的数据模型是 16 个外观槽位**（10 基础 + 6 自定义），没有 look16 / look17；这与菜单里的 16 项（ST,PT,NT,VV,VV2,FL,IN,SH,BW,SE,1ST,2FL,3IN,4SH,5VV2,6BW）一一对应。`ICON_TOUCH_*_CREATIVE_LOOK_*` 那 11 条字符串没有重定位槽，只被 pcrel 引用（所以按指针 xref 找不到调用者）。
 
 ### 1.3 CP（cpapp-b.bin）：单元目录与初始化数据块
 
@@ -71,7 +66,7 @@ id=0xc 已是 BASE_ISO_SENSITIVITY_DISPLAY_ON（不是外观）
 | key | size | 非零 | 形态判断 |
 | --- | ---: | ---: | --- |
 | 0x02a40000 | 4,608 | 1,415 | Q8 定点值（低字节常为 0），疑增益 / 系数表 |
-| 0x02a40001 | 8,192 | 2,815 | **参数表 + chroma**（已定位，见 §3） |
+| 0x02a40001 | 8,192 | 2,815 | **参数表 + chroma**（已定位，见 `3） |
 | 0x02a40002 | 768 | 111 | 含 `0x0010` 重复块 |
 | 0x02a40003 | 512 | 0 | 全零（运行时填充） |
 | 0x02a40004 | 1,280 | 120 | `0x0f` 标记块 |
@@ -83,7 +78,7 @@ id=0xc 已是 BASE_ISO_SENSITIVITY_DISPLAY_ON（不是外观）
 | 0x02a4000a | 256 | 1 | 仅一个 `0x19` |
 | 0x02a4000b | 256 | 63 | 干净的 3×3 (x,y) 网格：x∈{0x77,0xfc,0x180}，y∈{0x2d,0x155,0x282} |
 | 0x02a4000c | 512 | 95 | 表头 + 稀疏项 |
-| 0x02a4000d | 28,672 | 8,752 | **参数表 + 矩阵**（已定位，见 §3） |
+| 0x02a4000d | 28,672 | 8,752 | **参数表 + 矩阵**（已定位，见 `3） |
 | 0x02a4000e | 1,792 | 1,230 | 含递增小整数序列，疑曲线 |
 | 0x02a4000f | 512 | 203 | `0f 09 14 16` 起头 |
 | 0x02a40010 | 512 | 0 | 全零 |
@@ -146,7 +141,7 @@ id=0xc 已是 BASE_ISO_SENSITIVITY_DISPLAY_ON（不是外观）
 
 ### 4.1 资源 id 表没有空位
 
-见 §1.2：外观 id 只用 1..11，`0xc` 已被 `BASE_ISO_SENSITIVITY_DISPLAY_ON` 占用。想新增一项
+见 `1.2：外观 id 只用 1..11，`0xc` 已被 `BASE_ISO_SENSITIVITY_DISPLAY_ON` 占用。想新增一项
 外观，必须先有可用的 id 与其文本资源。
 
 ### 4.2 显示文字不是明文（全机身扫描）
@@ -185,21 +180,24 @@ id=0xc 已是 BASE_ISO_SENSITIVITY_DISPLAY_ON（不是外观）
 | nflasha15 | 未全量 dump | 头部 cramfs + gzip，是固件镜像 |
 
 结论：**没有找到任何 look 参数记录**；参数落盘位置仍未定位（可能在加密资源区内）。
+
+补充（2026-10-24）：后来又做了一组「CP 单元级」对比 —— 把 `2FL` 八个参数拉到 9（ext）与调回默认（def）两份 nflasha2 里的 `BACKUP.BIN` 逐单元比对，19 个 CP 单元**全部 0 字节差异**（总差异 1,975 B 全在单元区之外）。
+→ 外观参数既不在 CP，也不在上面这些分区里；唯一没全量 dump 的是 **nflasha15**（749,731,840 B），而相机根目录存在 `setting/`，`/usr` 又确认是 nflasha15 的根分区 → 参数最可能在 nflasha15 里。详见 `docs/PERSIST-STORE.md`。
 因此「把 FX2 数据注入自定义位」这条路暂时没有落点。
 
 ## 6. A7C2 的四层做法 vs A6700 缺口
 
 | 层 | A7C2 做了什么 | A6700 现状 |
 | --- | --- | --- |
-| ① appFw 开门 | 上限 9→11、12 字节表追加 0x13/0x14、两个选择能力位（`0x4b2ed19`）、FL2/FL3 出厂 Fade 默认（`0x4b3b544` / `0x4b3b54c`）、槽 16/17 绑定（`0x4b4a5e4` / `0x4b4a5ec`）、两个菜单产品标志（`0x59892ca` / `0x5989382`） | 转换器已定位（§1.1）；**外观定义表 / 菜单门 / 槽位绑定表未定位**；标签本身不可得（§4） |
-| ② cpapp 扩容 | 数据长度 `0x141b80`→`0x142aa0`（+3872 B）、在 `0x1100b80` 追加 curve / gamma / mode 表、gamma 上界 `0x2f`→`0x32`（三处）、三处表指针改到新地址（指针差推得 RAM = 文件偏移 + `0x108900`） | 长度字段与追加空间位置已确认（§1.3）；**参数 55/56 槽、gamma 表、chroma / 矩阵白名单未定位** |
+| ① appFw 开门 | 上限 9→11、12 字节表追加 0x13/0x14、两个选择能力位（`0x4b2ed19`）、FL2/FL3 出厂 Fade 默认（`0x4b3b544` / `0x4b3b54c`）、槽 16/17 绑定（`0x4b4a5e4` / `0x4b4a5ec`）、两个菜单产品标志（`0x59892ca` / `0x5989382`） | 转换器已定位（`1.1）；**外观定义表 / 菜单门 / 槽位绑定表未定位**；标签本身不可得（`4） |
+| ② cpapp 扩容 | 数据长度 `0x141b80`→`0x142aa0`（+3872 B）、在 `0x1100b80` 追加 curve / gamma / mode 表、gamma 上界 `0x2f`→`0x32`（三处）、三处表指针改到新地址（指针差推得 RAM = 文件偏移 + `0x108900`） | 长度字段与追加空间位置已确认（`1.3）；**参数 55/56 槽、gamma 表、chroma / 矩阵白名单未定位** |
 | ③ 运行时写槽 | `cp_read` / `cp_write` 把 FL2/FL3 的 chroma(64 B) / 矩阵(576 B) 写到参数 55/56、槽 23/25 | **已打通**（`0x603/0x40` 读、`0x603/0x41` 写），但目标槽号在 A6700 是 5/6/8/9 这一族，需重定 |
 | ④ donor 数据 | 取自 FX2 固件的 `assets/fx2_fl23_donor.json`（`cc1_int16` 3×8、matrix 3×16×6 int16、gamma 记录） | 数据在手，可直接复用 |
 
 ## 7. 路线判断
 
 - **路线 A（完整移植，对齐 A7C2）**：产出是相机菜单里真的多出两个外观。
-  阻塞：① 没有显示文字可挂（§4，已判定不可行）；② appFw 外观定义 / 菜单门未定位；③ cpapp gamma 表未定位；
+  阻塞：① 没有显示文字可挂（`4，已判定不可行）；② appFw 外观定义 / 菜单门未定位；③ cpapp gamma 表未定位；
   ④ 需要新写窗口（现有 260 扇区不覆盖 CP/appFw 的新位置），要重做 catalog 与结构守卫。
   → **整体不做**；其中 ②③ 仍值得作为「让已有外观变成 FL2 观感」的前置工作。
 - **路线 B（改已有外观到 FL2 观感，名字不变）**：需要 ②③ 的定位结果 + 新写窗口（写 flash）。
@@ -212,13 +210,15 @@ id=0xc 已是 BASE_ISO_SENSITIVITY_DISPLAY_ON（不是外观）
 - 用 `bl` 扫描找转换器调用者 → 0 命中；用 rela addend / u64 指针查引用 → 0 命中（间接派发）。
 - 在 appFw 里搜 CP mode 字节序列（`10 0f 11 12`、`00 03 02 01 10 0f 11 12 05 0d`）→ 0 命中（模式号只在代码里）。
 - 按文案 id / 属性 id 立即数反查判定点（卡速那条线）→ 判定端只传「档位索引」，原理上不可能命中。
-- 在 WBI / appFw 里找明文外观名、UTF-16LE、zlib 压缩文本 → 全部 0 命中（§4.2）。
+- 在 WBI / appFw 里找明文外观名、UTF-16LE、zlib 压缩文本 → 全部 0 命中（`4.2）。
 - 猜「槽 11 = FL」（因为它的色度数值与 donor 的 FL2 接近）→ 归零后机身毫无变化。
 - 直接把 donor 的 FL2 数据写进 FL 槽（槽 8）→ 肉眼无差别。
-- 用全分区 diff 找自定义外观参数 → 两轮对比没有找到记录（§5）。
+- 用全分区 diff 找自定义外观参数 → 两轮对比没有找到记录（`5）。
 - 通过 `adrp+add` 直接 xref 外观资源记录表 `0x49e34d0` → 0 命中（走指针槽间接访问）。
 
 ## 9. 下一步（当前只推一条）
+
+**0. 先全量只读 dump nflasha15**（749,731,840 B，约 3-4 分钟，无风险）——外观参数与 `.uxc` 资源的实际落点都在它的 ext2 文件系统里；`firmware/parts/nflasha15-head.bin` 只有前 4 MB，不够用。落盘后先在 `/setting` 与 `/usr/share/app` 里找落点，再决定是否需要写 flash。
 
 **CP tone 单元定位实验**（需要用户看相机屏幕配合）：
 
@@ -239,6 +239,8 @@ id=0xc 已是 BASE_ISO_SENSITIVITY_DISPLAY_ON（不是外观）
 | `tools/cp_patch.py` | 一次会话连写多个单元（`0xKEY:FILE` 形式），失败即停 |
 | `tools/cp_survey.py` | 按单元目录批量读 19 个单元（`--skip-known` 跳过已定的两个） |
 | `tools/cp_units.py` / `tools/cp_base.py` / `tools/cp_ptr.py` | 解析单元目录、数据块、cpapp 的 Thumb movw/movt 指针（1,792 处落在初始化数据块内） |
+| `tools/nflasha2.py` | 解析 nflasha2 的 FAT12 卷（`--list` / `--extract` / `--get`），提取 `BACKUP.BIN` 与 `PSD.BIN` |
+| `tools/ls_camera.py` | 在服务模式下列目录（只读载荷的 mode 2 / getdents64） |
 | `tools/dump_camera.py` / `tools/dump_parts.py` | 只读 dump 文件与分区（可续传、多分区一次会话） |
 | `tools/a64.py` / `a64xref.py` / `rela.py` / `fwscan.py` / `lookdispatch.py` / `looktable.py` / `looknames.py` | appFw 反汇编与检索 |
 | `tools/caution_registry.py` / `caution_family.py` / `literal_scan.py` | 卡速文案全表导出与族分析（另一条线，见 `CARD-SPEED.md`） |

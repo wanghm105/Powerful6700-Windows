@@ -1,0 +1,8 @@
+{
+  "payload": "flash_write.elf",
+  "sha256": "2bf5cc3cdbd3848cfbc46b990072db331dc53d0e80f663ed52319bce598e5a3d",
+  "bytes": 73808,
+  "source": "flash_write.c",
+  "compiler": "zig 0.13.0 (aarch64-freestanding + ld.lld)",
+  "mode": "write-capable: pwrite64 path, refuses targets outside /usr/ and /cp/, fsync + read-back verify, remounts read-only afterwards"
+}

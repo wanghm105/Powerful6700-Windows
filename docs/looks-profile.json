@@ -1,0 +1,63 @@
+{
+  "schema": "a6700win/looks/1",
+  "updated": "2026-10-25",
+  "notes": "CC/NC 已通过逐色相验收（RMS 0.194 / 0.190）；PF/NF 为轻量版，只能压整体饱和。pairs 里的 index 是 12 组 (Cb,Cr) 中的第几组。",
+  "looks": [
+    {
+      "name": "CC",
+      "menu": "PT(Classic Chrome)",
+      "bank": 6,
+      "base": "6",
+      "factor": 1,
+      "pairs": [
+        {
+          "index": 2,
+          "factor": 0.52
+        }
+      ],
+      "rms": 0.194
+    },
+    {
+      "name": "NC",
+      "menu": "NT(Classic Negative)",
+      "bank": 4,
+      "base": "4",
+      "factor": 1,
+      "pairs": [
+        {
+          "index": 2,
+          "factor": 0.62
+        }
+      ],
+      "rms": 0.19
+    },
+    {
+      "name": "PF",
+      "menu": "VV(Ricoh Positive)",
+      "bank": 1,
+      "base": "1",
+      "factor": 1.05,
+      "pairs": [
+        {
+          "index": 2,
+          "factor": 0.75
+        }
+      ],
+      "rms": null
+    },
+    {
+      "name": "NF",
+      "menu": "VV2(Ricoh Negative)",
+      "bank": 14,
+      "base": "14",
+      "factor": 0.62,
+      "pairs": [
+        {
+          "index": 2,
+          "factor": 0.85
+        }
+      ],
+      "rms": null
+    }
+  ]
+}

@@ -9,3 +9,11 @@ __pycache__/
 pytest-of-*
 a6700win-*
 *.egg-info/
+
+# 样张与临时导出
+WHM*.JPG
+WHM*.ARW
+WHM*_1.JPG
+photo/
+ref-*.png
+*.ARW

@@ -1,6 +1,15 @@
-# Powerful6700 · Windows 0.2.0-win.1
+# Powerful6700 · Windows 0.3.0-win.1
 
 Sony A6700 工具 [Powerful6700](https://github.com/xyzhangxin/sony-a6700-powerful)（上游 0.2.0，GPL-3.0）的 Windows 端实现。
+
+## 本版新增：自定义外观
+
+- 菜单第 2 项 → **Classic Chrome**，第 3 项 → **Classic Negative**（逐色相 RMS 0.194 / 0.190，按 A7C2 的 19 张直出对照图定标）；
+- 第 4 项 → **Positive Film**、第 5 项 → **Negative Film**（低饱和轻量版）；
+- 新增 `tools/looks_apply.py` + `docs/looks-profile.json`：一条命令幂等写入四个外观；
+- 新增 `docs/LOOKS.md`（能力、边界、还原步骤）与 `docs/LOOK-COLOR.md`（全部调查数据与失败路径）。
+
+边界：只能改颜色倾向，做不出富士的 S 形影调；`.cube` / `.dcp` 不能直接导入。
 
 ## 适用范围
 
