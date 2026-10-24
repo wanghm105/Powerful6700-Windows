@@ -126,10 +126,14 @@ class NoticePage(Page):
         self.sections_box = Card("须知内容")
         self.root.addWidget(self.sections_box)
 
+        ack_row = QHBoxLayout()
+        ack_row.setContentsMargins(0, 0, 0, 0)
+        ack_row.addStretch(1)
         self.ack = QCheckBox("我已阅读，并了解适用范围与真实设备操作风险")
         self.ack.setObjectName("Acknowledge")
         self.ack.toggled.connect(self._acknowledge)
-        self.root.addWidget(self.ack)
+        ack_row.addWidget(self.ack)
+        self.root.addLayout(ack_row)
 
         self.env_card = Card("启动检查")
         self.env_rows = QVBoxLayout()
@@ -233,7 +237,7 @@ class NoticePage(Page):
             self.status.set_state("待检查", theme.TEXT_FAINT)
         self.check_button.setEnabled(acknowledged and not busy)
         self.check_button.setToolTip(
-            "" if acknowledged else "请先勾选上方「我已阅读，并了解适用范围与真实设备操作风险」。")
+            "" if acknowledged else "请先勾选「我已阅读，并了解适用范围与真实设备操作风险」。")
 
     def _section(self, section: dict) -> QWidget:
         wrapper = QFrame()

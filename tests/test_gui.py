@@ -162,3 +162,20 @@ def test_footer_reads_back_hint_next(app):
     positions = [widget.mapTo(page, widget.rect().topLeft()).x() for widget in widgets if widget is not None]
     assert positions == sorted(positions), f"页脚从左到右应为 上一步 → 提示 → 下一步，实际 {positions}"
     page.close()
+
+
+def test_notice_acknowledge_sits_on_the_right(app):
+    """阅读确认放在内容列右端：左边留白，右边缘贴住页面右边距。"""
+    from a6700win.gui.pages import NoticePage
+
+    page = NoticePage(_StubApp())
+    page.key = "notice"
+    page.render(dict(notice={}, busy=False, checked=False, notice_acknowledged=False, environment={}))
+    page.resize(900, 700)
+    page.show()
+    app.processEvents()
+    left = page.ack.mapTo(page, page.ack.rect().topLeft()).x()
+    right = left + page.ack.width()
+    assert left > page.width() / 2, f"阅读确认应靠右，实际 x={left} 页宽={page.width()}"
+    assert abs(right - (page.width() - 30)) <= 2, f"阅读确认右边缘应贴住右边距，实际 {right}"
+    page.close()
