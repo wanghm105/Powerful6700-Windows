@@ -133,6 +133,49 @@ class WrapLabel(QLabel):
                 parent.updateGeometry()
 
 
+class LabeledCheck(QWidget):
+    """文字在左、勾选框在右的勾选项；整块都能点，适合右对齐的确认行。"""
+
+    toggled = Signal(bool)
+
+    def __init__(self, text: str = "", parent: QWidget | None = None):
+        super().__init__(parent)
+        row = QHBoxLayout(self)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(9)
+        self.label = QLabel(text)
+        self.label.setStyleSheet(f"color: {theme.TEXT};")
+        self.box = QCheckBox()
+        self.box.setObjectName("Acknowledge")
+        self.box.setAccessibleName(text)
+        row.addWidget(self.label, 0, Qt.AlignVCenter)
+        row.addWidget(self.box, 0, Qt.AlignVCenter)
+        self.box.toggled.connect(self.toggled)
+        self.setCursor(Qt.PointingHandCursor)
+
+    def text(self) -> str:
+        return self.label.text()
+
+    def setText(self, text: str) -> None:
+        self.label.setText(text)
+        self.box.setAccessibleName(text)
+
+    def isChecked(self) -> bool:
+        return self.box.isChecked()
+
+    def setChecked(self, value: bool) -> None:
+        self.box.setChecked(bool(value))
+
+    def setEnabled(self, value: bool) -> None:  # noqa: N802 (Qt 命名)
+        super().setEnabled(value)
+        self.label.setStyleSheet(f"color: {theme.TEXT if value else theme.TEXT_FAINT};")
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton and self.box.isEnabled():
+            self.box.toggle()
+        super().mouseReleaseEvent(event)
+
+
 class LogBox(QPlainTextEdit):
     """只读的进度日志，自动滚动到底部。"""
 

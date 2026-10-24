@@ -9,7 +9,8 @@ from PySide6.QtWidgets import (
 
 from . import theme
 from .widgets import (
-    Badge, Card, CheckLine, Divider, DocLink, FeatureRow, LogBox, Pill, StepCard, WrapLabel, reset_layout,
+    Badge, Card, CheckLine, Divider, DocLink, FeatureRow, LabeledCheck, LogBox, Pill, StepCard,
+    WrapLabel, reset_layout,
 )
 
 
@@ -129,8 +130,7 @@ class NoticePage(Page):
         ack_row = QHBoxLayout()
         ack_row.setContentsMargins(0, 0, 0, 0)
         ack_row.addStretch(1)
-        self.ack = QCheckBox("我已阅读，并了解适用范围与真实设备操作风险")
-        self.ack.setObjectName("Acknowledge")
+        self.ack = LabeledCheck("我已阅读，并了解适用范围与真实设备操作风险")
         self.ack.toggled.connect(self._acknowledge)
         ack_row.addWidget(self.ack)
         self.root.addLayout(ack_row)
