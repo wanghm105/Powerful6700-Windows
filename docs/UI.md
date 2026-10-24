@@ -60,5 +60,8 @@ Powerful6700 的界面是一套「文档式」布局，不是仪表盘。改界�
 
 ## 7. 页面截图
 
-`docs/images/ui/` 下是 1180×800 离屏渲染的七张页面图（`python -m a6700win --render-pages 目录`，
-需要 `QT_QPA_FONTDIR=C:/Windows/Fonts` 才有中文字形）。改完排版先看这几张，再决定要不要动。
+`docs/images/*.png` 是 1240x860 离屏渲染的七张页面图（README 里用的就是这批）：
+
+    QT_QPA_FONTDIR=C:/Windows/Fonts python -m a6700win --render-pages .data/render
+
+换过页面结构后先重跑这一条、把这七张图一起更新，再决定要不要动其它页。

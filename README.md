@@ -68,7 +68,7 @@
 
 - `third_party/a6700_unlock/` 是上游运行时 [0.2.0](https://github.com/xyzhangxin/sony-a6700-powerful/releases/tag/v0.2.0) 的**逐字节副本**（GPL-3.0，含 LICENSE／NOTICE），固件字段表、写入事务、结果分类、界面状态机都是上游的。
 - 本项目自己写的代码只有 `src/a6700win/`（Windows 适配层 + PySide6 界面）、`tools/`、`tests/`、`packaging/`。
-- 适配方式不是在运行时里改代码，而是**在启动时注入 22 个替换点**（`src/a6700win/patches.py`，逐项理由见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)），因此上游再发版时可以整目录替换后重新对齐。
+- 适配方式不是在运行时里改代码，而是**在启动时注入 24 个替换点**（`src/a6700win/patches.py`，逐项理由见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)），因此上游再发版时可以整目录替换后重新对齐。
 
 我们具体做了什么：
 
@@ -96,17 +96,21 @@
 
 以下截图用同一份发布包渲染，界面和文案都是实际内容（截图时没有连相机）：
 
-| 操作前须知 | 相机准备 |
+| 操作前须知 | 驱动准备 |
 | --- | --- |
-| ![操作前须知](docs/images/notice.png) | ![相机准备](docs/images/preparation.png) |
+| ![操作前须知](docs/images/notice.png) | ![驱动准备](docs/images/driver.png) |
 
-| 功能管理 | 操作结果 |
+| 相机准备 | 功能管理 |
 | --- | --- |
-| ![功能管理](docs/images/home.png) | ![操作结果](docs/images/result.png) |
+| ![相机准备](docs/images/preparation.png) | ![功能管理](docs/images/home.png) |
 
-| 驱动准备 | 关于与诊断 |
+| 自定义外观 | 操作结果 |
 | --- | --- |
-| ![驱动准备](docs/images/driver.png) | ![关于与诊断](docs/images/about.png) |
+| ![自定义外观](docs/images/looks.png) | ![操作结果](docs/images/result.png) |
+
+| 关于与诊断 |  |
+| --- | --- |
+| ![关于与诊断](docs/images/about.png) |  |
 
 ## 功能明细
 
@@ -128,8 +132,8 @@
 
 | 菜单项 | 改成 | 实测 |
 | --- | --- | --- |
-| PT（第 2 项） | **Classic Chrome** | 逐色相 RMS 0.194 |
-| NT（第 3 项） | **Classic Negative** | 逐色相 RMS 0.190 |
+| PT（第 2 项） | **Classic Chrome** | 逐色相 RMS 0.183 |
+| NT（第 3 项） | **Classic Negative** | 逐色相 RMS 0.173 |
 | VV（第 4 项） | Positive Film（理光正片） | 低饱和轻量版 |
 | VV2（第 5 项） | Negative Film（理光负片） | 低饱和轻量版 |
 
