@@ -12,6 +12,9 @@ DesktopController 的启动检查在 Windows 上永远不通过。
 - doctor.diagnose 与 preparation.diagnose → Windows 版启动检查
 - operations.device_lock / make_directory / save_json、backup 的同名助手
   → a6700win.windows_shim（上游用 fcntl 与目录 fsync，Windows 上不可用）
+- device_profile.inspect_sectors / operations.inspect_sectors
+  → a6700win.guards（结构守卫里有 9 个扇区是 ext2 inode 元数据，
+    相机开机自己会刷新时间戳，只放行这 12 字节）
 - DesktopController.run_reserved → 出错时释放 busy，界面不再卡在"操作进行中"
 
 用法：在构造 DesktopController 之前调用 install()。
@@ -22,7 +25,7 @@ from __future__ import annotations
 import ctypes
 import sys
 
-from . import paths, windows_shim
+from . import guards, paths, windows_shim
 from .usb import driver, setupapi, windows_auth
 
 _installed = False
@@ -49,6 +52,8 @@ _PATCH_NAMES = (
     "planner.os.O_NONBLOCK",
     "backup.os.O_BINARY",
     "controller.run_reserved",
+    "device_profile.inspect_sectors",
+    "operations.inspect_sectors",
     "controller.available_backups",
     "controller.restore_scope",
 )
@@ -275,6 +280,8 @@ def install() -> dict:
     if backup_module.os is not windows_shim.BINARY_OS:
         backup_module.os = windows_shim.BINARY_OS
         applied.append("backup.os.O_BINARY")
+
+    applied.extend(guards.install())
 
     controller_class = controller_module.DesktopController
     if not getattr(controller_class.run_reserved, "_a6700win_wrapped", False):

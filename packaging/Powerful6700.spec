@@ -37,6 +37,9 @@ datas.append((str(_libusb()), "."))
 LOOKS = ROOT / "docs" / "looks-profile.json"
 if LOOKS.is_file():
     datas.append((str(LOOKS), "docs"))
+GUARDS = ROOT / "src" / "a6700win" / "data" / "guard-overlay.json"
+if GUARDS.is_file():
+    datas.append((str(GUARDS), "a6700win/data"))
 
 a = Analysis(
     [str(ROOT / "packaging" / "entry.py")],

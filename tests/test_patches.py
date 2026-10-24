@@ -32,6 +32,8 @@ EXPECTED = {
     "controller.run_reserved",
     "controller.available_backups",
     "controller.restore_scope",
+    "device_profile.inspect_sectors",
+    "operations.inspect_sectors",
 }
 
 

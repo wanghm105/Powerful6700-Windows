@@ -25,7 +25,7 @@ Powerful6700Win/
 └─ tests/              pytest：SetupAPI 解析、wdi 参数、补丁幂等、载荷严格性、无头渲染
 ```
 
-## 补丁点（`patches.install()`，共 22 项，可重复调用）
+## 补丁点（`patches.install()`，共 24 项，可重复调用）
 
 上游模块在自己的作用域里 `from … import name` 绑定了函数，所以必须**逐个模块**替换属性，
 而不是只改定义模块：
@@ -49,6 +49,7 @@ Powerful6700Win/
 | `controller.run_reserved` | 上游 `run_reserved()` 没有 `try/except`：设备出错时异常冒到界面，`busy` 永远为 True，界面卡在"操作进行中"且按钮全灰 |
 | `controller.available_backups` | 上游在 physical 模式下除非当前动作已是 backup/restore 就返回空列表，而 `reserve('restore', id)` 先按该列表校验备份 ID 才设置 `self.action` → 桌面端恢复永远不可用；改为照常枚举程序自己的备份目录并按 `profile.digest` 过滤 |
 | `controller.restore_scope` | 上游对 restore 也传 `features=sorted(self.selected_features)`，`restore_plan()` 只写回勾选功能；「恢复整份备份」应整份写回，故调用前临时把选择扩到全部已开放功能，调用后还原 |
+| `device_profile.inspect_sectors` / `operations.inspect_sectors` | /usr（nflasha15，ext2）里有 9 个结构守卫扇区落在 inode 表上，相机自己会刷新 inode 的 atime/ctime/mtime，导致什么都没做也判 blocked；豁免表 `src/a6700win/data/guard-overlay.json` 只放行每个 inode 记录里的 12 字节时间戳（并同时把期望哈希换成清零后的值），mode/size/blocks 与其余字节仍逐字节校验 |
 
 补丁全部幂等（用 `_a6700win_wrapped_*` 标记与身份比较），`install()` 返回
 `{applied, already, libusb, driver}`，自检和「关于与诊断」页都会展示。

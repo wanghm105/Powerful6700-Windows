@@ -1,0 +1,58 @@
+{
+  "schema": "a6700win/guard-overlay/1",
+  "description": "结构守卫里落在 ext2 inode 表中的扇区；只放行 atime/ctime/mtime 漂移",
+  "inode_size": 256,
+  "volatile": [
+    [
+      8,
+      20
+    ]
+  ],
+  "records": {
+    "9": {
+      "device": 0,
+      "device_offset": 42221568,
+      "normalized_sha256": "1d7cb7db27967634a6e0afc960b31226a30642a591affc4d1e2ca289a33d37cd"
+    },
+    "14": {
+      "device": 0,
+      "device_offset": 100666368,
+      "normalized_sha256": "3686140036b11ab3552d645f2b642b0466629414c34658025a512cce9baba83b"
+    },
+    "15": {
+      "device": 0,
+      "device_offset": 100666880,
+      "normalized_sha256": "6e138b30373a16c536ebd9e29a8bd6ee77dc91c9a86161d1a05d7f722d01b57f"
+    },
+    "17": {
+      "device": 0,
+      "device_offset": 100716544,
+      "normalized_sha256": "5f96b54458c21c8f3b513794e3f1943545bbaa28866dbfe94357650deedf19a1"
+    },
+    "18": {
+      "device": 0,
+      "device_offset": 100717056,
+      "normalized_sha256": "eb981170b613078b59e912a1f431c43391055046dd0c9050dcd6c3bc1fecb686"
+    },
+    "29": {
+      "device": 0,
+      "device_offset": 156667904,
+      "normalized_sha256": "d3abc70b58f5e9bee6037bdf0b94dd00cf46c140b2a21929005562378daffc73"
+    },
+    "39": {
+      "device": 0,
+      "device_offset": 228248576,
+      "normalized_sha256": "675ee19d7e46aa1fb54c050943182385627dea94681011d449c55d583d255205"
+    },
+    "40": {
+      "device": 0,
+      "device_offset": 228249088,
+      "normalized_sha256": "e1a0d4a39cf7e0791e2f8eeed289b96f1da1331e6d6ad5a253be758f8bdd28be"
+    },
+    "50": {
+      "device": 0,
+      "device_offset": 243794432,
+      "normalized_sha256": "c0d4408454352ec40966e6e47ebe3515a94ef78f3cee5f2e9a9b0a99b25539cc"
+    }
+  }
+}

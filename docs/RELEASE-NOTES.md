@@ -9,6 +9,11 @@ Sony A6700 工具 [Powerful6700](https://github.com/xyzhangxin/sony-a6700-powerf
 - 新增 `tools/looks_apply.py` + `docs/looks-profile.json`：一条命令幂等写入四个外观；
 - 新增 `docs/LOOKS.md`（能力、边界、还原步骤）与 `docs/LOOK-COLOR.md`（全部调查数据与失败路径）。
 
+### 本版修复
+
+- **界面改成分步引导**：左侧导航即操作顺序，每页顶部标「第 N 步 · 共 6 步」，底部「← 上一步 / 下一步」带门闸，缺什么直接写在按钮旁边；
+- **修掉「兼容性检查未通过 / blocked」误报**：/usr 分区里有 9 个结构守卫扇区落在 ext2 inode 表上，相机自己会刷新 inode 时间戳，导致什么都没做也判不兼容。现在只对这 9 个扇区的 atime/ctime/mtime（每个 inode 12 字节）放行，内容与其余字节仍逐字节校验。
+
 边界：只能改颜色倾向，做不出富士的 S 形影调；`.cube` / `.dcp` 不能直接导入。
 
 ## 适用范围
@@ -34,17 +39,18 @@ Sony A6700 工具 [Powerful6700](https://github.com/xyzhangxin/sony-a6700-powerf
 1. 解压 `Powerful6700-Windows-x64.zip`，得到 `Powerful6700\` 目录（绿色版，无需安装）
 2. 相机设为 **USB 连接模式 = 海量存储(MSC)**，关闭 FTP，接一根数据线且只接一台目标相机
 3. 双击 `Powerful6700.exe`（首次绑定驱动建议右键「以管理员身份运行」）
-4. 「驱动准备」页：扫描设备 → 下载驱动组件 → 绑定 WinUSB（0x0E76；第一次只读检查时出现的 0x0336 会由程序自动绑定）
-5. 「操作前须知」→ 启动检查 → 勾选 → 「相机准备」四项确认 → 开始只读检查
+4. 「操作前须知」：启动检查 → 勾选阅读确认 → 底部「下一步：驱动准备」
+5. 「驱动准备」页：扫描设备 → 下载驱动组件 → 绑定 WinUSB（0x0E76；第一次只读检查时出现的 0x0336 会由程序自动绑定）
+6. 「相机准备」四项确认 → 开始只读检查 → 「功能管理」勾选功能 → 解锁／关闭
 
 ## 校验
 
 ```
-SHA-256 (Powerful6700-Windows-x64.zip) = e20e66cb5a577e24914cfd92ee99e2732013b94f94bc470f45bbd585e668cb4e
+SHA-256 (Powerful6700-Windows-x64.zip) = 构建后在 Release 附件里给出
 ```
 
 ## 许可
 
-GPL-3.0-only。上游运行时 `a6700_unlock` 0.2.0 原样副本位于 `third_party/a6700_unlock/`；全部改动集中在 `src/a6700win/`（22 个补丁点见 `docs/ARCHITECTURE.md`，差异见 `docs/UPSTREAM-NOTES.md`）。二进制分发请遵循 GPL-3.0，对应源码即本 tag。
+GPL-3.0-only。上游运行时 `a6700_unlock` 0.2.0 原样副本位于 `third_party/a6700_unlock/`；全部改动集中在 `src/a6700win/`（24 个补丁点见 `docs/ARCHITECTURE.md`，差异见 `docs/UPSTREAM-NOTES.md`）。二进制分发请遵循 GPL-3.0，对应源码即本 tag。
 
 本项目非 Sony 官方工具，与 Sony 及上游作者均无从属关系，也未获其背书。真实固件修改存在无法启动（变砖）、设置或数据丢失的风险，请先阅读应用内「操作前须知」。

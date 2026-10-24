@@ -50,6 +50,8 @@ QLabel#Subtitle {{ color: {TEXT_MUTED}; font-size: 13px; }}
 QLabel#SectionTitle {{ font-size: 15px; font-weight: 600; }}
 QLabel#Muted {{ color: {TEXT_MUTED}; }}
 QLabel#Faint {{ color: {TEXT_FAINT}; font-size: 12px; }}
+QLabel#StepChip {{ color: {ACCENT}; font-size: 12px; font-weight: 600; letter-spacing: 0.6px; }}
+QFrame#Footer {{ background: {SURFACE}; border-top: 1px solid {BORDER_SOFT}; }}
 QLabel#Badge {{
     background: {ACCENT_SOFT};
     color: {ACCENT};

@@ -18,6 +18,7 @@ class Page(QWidget):
 
     title = ""
     subtitle = ""
+    step = 0  # 线性流程里的步骤号；0 表示不参与步骤（关于与诊断）
 
     def __init__(self, app, parent: QWidget | None = None):
         super().__init__(parent)
@@ -38,6 +39,9 @@ class Page(QWidget):
         self.root.setSpacing(18)
         head = QVBoxLayout()
         head.setSpacing(6)
+        self.step_label = QLabel("")
+        self.step_label.setObjectName("StepChip")
+        head.addWidget(self.step_label)
         self.title_label = QLabel(self.title)
         self.title_label.setObjectName("Title")
         head.addWidget(self.title_label)
@@ -46,13 +50,74 @@ class Page(QWidget):
         head.addWidget(self.subtitle_label)
         self.root.addLayout(head)
 
+        self.footer = QFrame()
+        self.footer.setObjectName("Footer")
+        bar = QHBoxLayout(self.footer)
+        bar.setContentsMargins(30, 10, 30, 12)
+        bar.setSpacing(10)
+        self.back_button = QPushButton("← 上一步")
+        self.back_button.setObjectName("Ghost")
+        self.back_button.clicked.connect(self._go_back)
+        bar.addWidget(self.back_button)
+        self.next_button = QPushButton("下一步")
+        self.next_button.setObjectName("Primary")
+        self.next_button.clicked.connect(self._go_next)
+        bar.addWidget(self.next_button)
+        self.footer_hint = QLabel("")
+        self.footer_hint.setObjectName("Faint")
+        bar.addWidget(self.footer_hint, 1)
+        outer.addWidget(self.footer)
+
+        self.key = ""
+        self._prev_key: str | None = None
+        self._next_key: str | None = None
+        self.footer.hide()
+
     def render(self, snapshot: dict) -> None:  # pragma: no cover - 由子类实现
         pass
+
+    # ------------------------------------------------------------ 线性流程
+    def step_reason(self, snapshot: dict) -> str | None:
+        """返回阻止进入下一步的原因；返回 None 表示可以继续。"""
+        return None
+
+    def update_steps(self, snapshot: dict) -> None:
+        order = list(getattr(self.app, "step_keys", []) or [])
+        titles = getattr(self.app, "step_titles", {}) or {}
+        if not self.step or self.key not in order:
+            self.step_label.hide()
+            self.footer.hide()
+            return
+        index = order.index(self.key)
+        self.step_label.setText(f"第 {self.step} 步 · 共 {len(order)} 步")
+        self.step_label.show()
+        self.footer.show()
+        self._prev_key = order[index - 1] if index > 0 else None
+        self._next_key = order[index + 1] if index + 1 < len(order) else None
+        self.back_button.setVisible(self._prev_key is not None)
+        self.next_button.setVisible(self._next_key is not None)
+        if self._next_key is None:
+            self.footer_hint.setText("已是最后一步；需要继续时可以回到「功能管理」。")
+            return
+        self.next_button.setText(f"下一步：{titles.get(self._next_key, '')}")
+        reason = self.step_reason(snapshot)
+        busy = bool(snapshot.get("busy"))
+        self.next_button.setEnabled(not reason and not busy)
+        self.footer_hint.setText(reason or "")
+
+    def _go_back(self) -> None:
+        if self._prev_key:
+            self.app.goto(self._prev_key)
+
+    def _go_next(self) -> None:
+        if self._next_key:
+            self.app.goto(self._next_key)
 
 
 class NoticePage(Page):
     title = "操作前须知"
     subtitle = "请先阅读适用范围、验证进度与操作风险，然后完成启动检查。"
+    step = 1
 
     def __init__(self, app, parent: QWidget | None = None):
         super().__init__(app, parent)
@@ -93,9 +158,6 @@ class NoticePage(Page):
         self.check_button.setObjectName("Primary")
         self.check_button.clicked.connect(lambda: self.app.check_environment())
         actions.addWidget(self.check_button)
-        self.continue_button = QPushButton("进入相机准备")
-        self.continue_button.clicked.connect(self._continue)
-        actions.addWidget(self.continue_button)
         actions.addStretch(1)
         self.status = Pill("")
         actions.addWidget(self.status)
@@ -108,9 +170,18 @@ class NoticePage(Page):
             return
         self.app.call_controller(lambda: self.app.controller.acknowledge_notice(bool(value)))
 
-    def _continue(self) -> None:
+    def step_reason(self, snapshot: dict) -> str | None:
+        if not snapshot.get("checked"):
+            return "请先运行启动检查。"
+        if not (snapshot.get("environment") or {}).get("ready"):
+            return "启动检查未全部通过，请按提示处理后重试。"
+        if not snapshot.get("notice_acknowledged"):
+            return "请先勾选上方的阅读确认。"
+        return None
+
+    def _go_next(self) -> None:
         if self.app.call_controller(lambda: self.app.controller.begin_preparation()):
-            self.app.goto("preparation")
+            super()._go_next()
 
     def render(self, snapshot: dict) -> None:
         notice = snapshot.get("notice") or {}
@@ -153,16 +224,6 @@ class NoticePage(Page):
         checked = bool(snapshot.get("checked"))
         acknowledged = bool(snapshot.get("notice_acknowledged"))
         self.check_button.setText("重新运行启动检查" if checked else "开始启动检查")
-        # 注意：snapshot["ready"] 表示"四项相机准备也确认完了"，在须知页永远为 False；
-        # 进入准备页的门槛是 begin_preparation() 自己的三个条件，必须照抄，否则按钮永久禁用。
-        can_continue = checked and ready and acknowledged and not snapshot.get("busy")
-        self.continue_button.setEnabled(can_continue)
-        if not checked or not ready:
-            self.continue_button.setToolTip("请先运行启动检查，且五项检查全部通过。")
-        elif not acknowledged:
-            self.continue_button.setToolTip("请勾选上方的阅读确认。")
-        else:
-            self.continue_button.setToolTip("")
         if snapshot.get("busy"):
             self.status.set_state("操作进行中", theme.WARNING)
         elif ready:
@@ -208,6 +269,7 @@ class NoticePage(Page):
 class PreparationPage(Page):
     title = "相机准备"
     subtitle = "按顺序确认四项准备工作；确认后即可进行只读兼容性检查。"
+    step = 3
 
     def __init__(self, app, parent: QWidget | None = None):
         super().__init__(app, parent)
@@ -279,6 +341,13 @@ class PreparationPage(Page):
         else:
             self.inspect_button.setToolTip("")
 
+    def step_reason(self, snapshot: dict) -> str | None:
+        if not snapshot.get("ready"):
+            return "请先把四项准备全部确认。"
+        if not snapshot.get("compatible"):
+            return "请先点「开始只读检查」，通过后进入功能管理。"
+        return None
+
     def _confirm(self, step_id: str, value: bool) -> None:
         self.app.call_controller(lambda: self.app.controller.confirm(step_id, bool(value)))
 
@@ -286,6 +355,7 @@ class PreparationPage(Page):
 class HomePage(Page):
     title = "功能管理"
     subtitle = "只读检查通过后可选择功能并执行解锁、关闭、备份或恢复。"
+    step = 4
 
     def __init__(self, app, parent: QWidget | None = None):
         super().__init__(app, parent)
@@ -450,6 +520,7 @@ class HomePage(Page):
 class ResultPage(Page):
     title = "操作结果"
     subtitle = "结果来自真实设备回读校验；如提示不确定请按说明处置。"
+    step = 6
 
     def __init__(self, app, parent: QWidget | None = None):
         super().__init__(app, parent)

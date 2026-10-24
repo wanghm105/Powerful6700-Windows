@@ -11,6 +11,7 @@ from .widgets import Card, LogBox, Pill, WrapLabel, reset_layout
 
 class DriverPage(Page):
     title = "驱动准备"
+    step = 2
     subtitle = (
         "Windows 需要把相机的 USB 接口绑定到 WinUSB，Python 才能通过 libusb 与相机通信。"
         "本页仅在真实设备模式下使用；绑定过程需要管理员权限，且只针对索尼相机的 "

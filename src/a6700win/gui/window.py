@@ -19,13 +19,15 @@ from .looks_page import LooksPage
 from .pages import HomePage, NoticePage, PreparationPage, ResultPage
 from .worker import Task
 
+# 导航顺序即操作顺序：先把驱动绑好，再准备相机、做只读检查、改功能或外观，最后看结果。
+# 编号是给第一次上手的人看的；关于与诊断不参与线性流程，所以没有编号。
 NAV = [
     ("notice", "操作前须知", "1"),
-    ("preparation", "相机准备", "2"),
-    ("home", "功能管理", "3"),
-    ("looks", "自定义外观", ""),
-    ("result", "操作结果", "4"),
-    ("driver", "驱动准备", ""),
+    ("driver", "驱动准备", "2"),
+    ("preparation", "相机准备", "3"),
+    ("home", "功能管理", "4"),
+    ("looks", "自定义外观", "5"),
+    ("result", "操作结果", "6"),
     ("about", "关于与诊断", ""),
 ]
 
@@ -83,6 +85,10 @@ class MainWindow(QMainWindow):
             "driver": DriverPage(self),
             "about": AboutPage(self),
         }
+        self.step_keys = [key for key, _text, index in NAV if index]
+        self.step_titles = {key: text for key, text, _index in NAV}
+        for key, page in self.pages.items():
+            page.key = key
         for key, page in self.pages.items():
             self.stack.addWidget(page)
         right_layout.addWidget(self.stack, 1)
@@ -147,6 +153,7 @@ class MainWindow(QMainWindow):
         if page is not None:
             try:
                 page.render(self.snapshot)
+                page.update_steps(self.snapshot)
             except Exception:  # noqa: BLE001 - 渲染问题不应崩溃
                 traceback.print_exc()
         mode = "演示模式" if self.snapshot.get("simulation") else "真实设备模式"

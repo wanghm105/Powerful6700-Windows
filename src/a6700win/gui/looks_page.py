@@ -18,6 +18,7 @@ STATE_TEXT = {
 
 class LooksPage(Page):
     title = "自定义外观"
+    step = 5
     subtitle = "把 PT / NT / VV / VV2 四个菜单项换成富士与理光的配色；只改颜色记录，不碰固件。"
 
     def __init__(self, app, parent: QWidget | None = None):
