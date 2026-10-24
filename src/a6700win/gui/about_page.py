@@ -40,14 +40,15 @@ class AboutPage(Page):
 
         actions = QHBoxLayout()
         actions.setSpacing(10)
+        actions.addStretch(1)
         self.diag_button = QPushButton("环境诊断")
+        self.diag_button.setObjectName("Ghost")
         self.diag_button.clicked.connect(self._diagnose)
         actions.addWidget(self.diag_button)
         self.selftest_button = QPushButton("运行离线自检")
         self.selftest_button.setObjectName("Primary")
         self.selftest_button.clicked.connect(self._selftest)
         actions.addWidget(self.selftest_button)
-        actions.addStretch(1)
         root.addLayout(actions)
 
         self.output_card = Card("诊断输出")

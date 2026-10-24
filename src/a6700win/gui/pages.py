@@ -1,7 +1,7 @@
 """四个主流程页面：须知、相机准备、功能管理、结果。"""
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QEvent, Qt
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QSizePolicy, QVBoxLayout, QWidget,
@@ -9,9 +9,13 @@ from PySide6.QtWidgets import (
 
 from . import theme
 from .widgets import (
-    Badge, Card, CheckLine, Divider, DocLink, FeatureRow, LabeledCheck, LogBox, Pill, StepCard,
+    Badge, Card, CheckLine, Divider, DocLink, FeatureRow, LabeledCheck, LogBox, Pill, SectionRow,
+    StepCard,
     WrapLabel, reset_layout,
 )
+
+
+COLUMN_WIDTH = 800  # 内容列上限：正文行宽控制在 45 字左右
 
 
 class Page(QWidget):
@@ -35,7 +39,19 @@ class Page(QWidget):
         self.content = QWidget()
         self.content.setObjectName("Content")
         self.scroll.setWidget(self.content)
-        self.root = QVBoxLayout(self.content)
+        self.shell = QHBoxLayout(self.content)
+        self.shell.setContentsMargins(0, 0, 0, 0)
+        self.shell.setSpacing(0)
+        self.column = QWidget()
+        self.column.setObjectName("Column")
+        self.column.setFixedWidth(COLUMN_WIDTH)
+        self.column.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Minimum)
+        # 左对齐 + 尾部 stretch：左缘由 _fit_gutters 的固定外边距决定，
+        # 尾部富余空间吸收有/无竖直滚动条带来的宽度差，保证换页时不横跳。
+        self.shell.addWidget(self.column, 0, Qt.AlignTop)
+        self.shell.addStretch(1)
+        self.scroll.viewport().installEventFilter(self)
+        self.root = QVBoxLayout(self.column)
         self.root.setContentsMargins(30, 26, 30, 26)
         self.root.setSpacing(18)
         head = QVBoxLayout()
@@ -50,12 +66,14 @@ class Page(QWidget):
         self.subtitle_label.setObjectName("Subtitle")
         head.addWidget(self.subtitle_label)
         self.root.addLayout(head)
+        self.root.addWidget(Divider())
 
         self.footer = QFrame()
         self.footer.setObjectName("Footer")
         bar = QHBoxLayout(self.footer)
         bar.setContentsMargins(30, 10, 30, 12)
         bar.setSpacing(10)
+        self.footer_bar = bar
         self.back_button = QPushButton("← 上一步")
         self.back_button.setObjectName("Ghost")
         self.back_button.clicked.connect(self._go_back)
@@ -75,6 +93,34 @@ class Page(QWidget):
         self._prev_key: str | None = None
         self._next_key: str | None = None
         self.footer.hide()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._fit_gutters()
+
+    def _gutter(self) -> int:
+        return max(0, (self.width() - COLUMN_WIDTH) // 2)
+
+    def _fit_gutters(self) -> None:
+        """内容列与页脚统一按窗口宽度留出居中外边距。"""
+        gutter = self._gutter()
+        if self.shell.contentsMargins().left() != gutter:
+            self.shell.setContentsMargins(gutter, 0, 0, 0)
+        if self.footer_bar.contentsMargins().left() != 30 + gutter:
+            self.footer_bar.setContentsMargins(30 + gutter, 10, 30 + gutter, 12)
+
+    def eventFilter(self, watched, event):
+        if watched is self.scroll.viewport() and event.type() == QEvent.Resize:
+            self._fit_gutters()
+            self._fit_column()
+        return super().eventFilter(watched, event)
+
+    def _fit_column(self) -> None:
+        """内容列固定上限宽度；窗口变窄时收窄到两侧留白之外。"""
+        available = self.width() - 2 * self._gutter()
+        width = max(360, min(COLUMN_WIDTH, available))
+        if self.column.width() != width:
+            self.column.setFixedWidth(width)
 
     def render(self, snapshot: dict) -> None:  # pragma: no cover - 由子类实现
         pass
@@ -119,33 +165,39 @@ class Page(QWidget):
 
 class NoticePage(Page):
     title = "操作前须知"
-    subtitle = "请先阅读适用范围、验证进度与操作风险，然后完成启动检查。"
+    subtitle = "先读一遍适用范围、验证进度与操作风险，再运行启动检查。"
     step = 1
 
     def __init__(self, app, parent: QWidget | None = None):
         super().__init__(app, parent)
-        self.sections_box = Card("须知内容")
+        self.sections_box = Card("适用范围与风险")
+        self.rows_box = QVBoxLayout()
+        self.rows_box.setSpacing(18)
+        self.sections_box.add_layout(self.rows_box)
         self.root.addWidget(self.sections_box)
 
-        ack_row = QHBoxLayout()
-        ack_row.setContentsMargins(0, 0, 0, 0)
-        ack_row.addStretch(1)
-        self.ack = LabeledCheck("我已阅读，并了解适用范围与真实设备操作风险")
-        self.ack.toggled.connect(self._acknowledge)
-        ack_row.addWidget(self.ack)
-        self.root.addLayout(ack_row)
-
         self.env_card = Card("启动检查")
+        self.status = Pill("")
+        self.env_card.head_left.addWidget(self.status)
+        self.check_button = QPushButton("开始启动检查")
+        self.check_button.setObjectName("Primary")
+        self.check_button.clicked.connect(lambda: self.app.check_environment())
+        self.env_card.header.addWidget(self.check_button)
+
         self.env_rows = QVBoxLayout()
-        self.env_rows.setSpacing(8)
+        self.env_rows.setSpacing(9)
         self.env_card.add_layout(self.env_rows)
         self.env_empty = QLabel("尚未运行启动检查。")
         self.env_empty.setObjectName("Muted")
         self.env_rows.addWidget(self.env_empty)
         self.env_card.add(Divider())
-        meta = QGridLayout()
-        meta.setHorizontalSpacing(24)
-        meta.setVerticalSpacing(6)
+
+        self.meta_grid = QGridLayout()
+        self.meta_grid.setContentsMargins(26, 0, 0, 0)
+        self.meta_grid.setHorizontalSpacing(10)
+        self.meta_grid.setVerticalSpacing(7)
+        self.meta_grid.setColumnMinimumWidth(0, 150)
+        self.meta_grid.setColumnStretch(1, 1)
         self.meta_labels = {}
         for row, key, name in ((0, "read_bytes", "检查读取范围"), (1, "feature_state_backup", "功能状态备份"),
                               (2, "full_backup", "完整备份"), (3, "integrated_hardware_validation", "整机验证")):
@@ -153,17 +205,23 @@ class NoticePage(Page):
             key_label.setObjectName("Faint")
             value_label = WrapLabel("—")
             value_label.setObjectName("Muted")
-            meta.addWidget(key_label, row, 0)
-            meta.addWidget(value_label, row, 1)
+            self.meta_grid.addWidget(key_label, row, 0)
+            self.meta_grid.addWidget(value_label, row, 1)
             self.meta_labels[key] = value_label
-        self.env_card.add_layout(meta)
+        self.env_card.add_layout(self.meta_grid)
 
-        self.status = Pill("")
-        self.check_button = QPushButton("开始启动检查")
-        self.check_button.setObjectName("Primary")
-        self.check_button.clicked.connect(lambda: self.app.check_environment())
-        self.env_card.header.addWidget(self.status)
-        self.env_card.header.addWidget(self.check_button)
+        self.env_card.add(Divider())
+        ack_row = QHBoxLayout()
+        ack_row.setSpacing(12)
+        self.env_hint = QLabel("")
+        self.env_hint.setObjectName("Faint")
+        ack_row.addWidget(self.env_hint)
+        ack_row.addStretch(1)
+        self.ack = LabeledCheck("我已阅读，并了解适用范围与真实设备操作风险")
+        self.ack.toggled.connect(self._acknowledge)
+        ack_row.addWidget(self.ack)
+        self.env_card.add_layout(ack_row)
+
         self.root.addWidget(self.env_card)
         self.root.addStretch(1)
         self._rendered_sections = False
@@ -175,7 +233,7 @@ class NoticePage(Page):
 
     def step_reason(self, snapshot: dict) -> str | None:
         if not snapshot.get("notice_acknowledged"):
-            return "请先勾选「我已阅读」，再运行启动检查。"
+            return "勾选「启动检查」里的确认后，才能进入下一步。"
         if not snapshot.get("checked"):
             return "请先运行启动检查。"
         if not (snapshot.get("environment") or {}).get("ready"):
@@ -189,19 +247,18 @@ class NoticePage(Page):
     def render(self, snapshot: dict) -> None:
         notice = snapshot.get("notice") or {}
         if not self._rendered_sections:
-            self.sections_box.set_title(str(notice.get("title", "操作前须知")))
-            intro = WrapLabel(str(notice.get("introduction", "")))
-            intro.setObjectName("Muted")
-            self.sections_box.add(intro)
-            for section in notice.get("sections", []):
-                self.sections_box.add(self._section(section))
+            sections = notice.get("sections", [])
+            for index, section in enumerate(sections, start=1):
+                self.rows_box.addWidget(SectionRow(index, section, self.app.open_url))
+            self.sections_box.set_subtitle(f"共 {len(sections)} 条 · 阅读后可逐项检查环境")
             self._rendered_sections = True
 
         self._syncing = True
         acknowledged = bool(snapshot.get("notice_acknowledged"))
         self.ack.setChecked(acknowledged)
         self._syncing = False
-        self.ack.setEnabled(not snapshot.get("busy"))
+        busy = bool(snapshot.get("busy"))
+        self.ack.setEnabled(not busy)
 
         environment = snapshot.get("environment") or {}
         checks = environment.get("checks") or []
@@ -219,14 +276,11 @@ class NoticePage(Page):
             f"{read_bytes:,} 字节（{read_bytes // 512} 个固定扇区）" if isinstance(read_bytes, int) else "—"
         )
         for key in ("feature_state_backup", "full_backup", "integrated_hardware_validation"):
-            value = environment.get(key, "—")
-            self.meta_labels[key].setText(str(value))
+            self.meta_labels[key].setText(str(environment.get(key, "—")))
 
         ready = bool(environment.get("ready"))
         checked = bool(snapshot.get("checked"))
-        acknowledged = bool(snapshot.get("notice_acknowledged"))
         self.check_button.setText("重新运行启动检查" if checked else "开始启动检查")
-        busy = bool(snapshot.get("busy"))
         if busy:
             self.status.set_state("操作进行中", theme.WARNING)
         elif ready:
@@ -237,38 +291,19 @@ class NoticePage(Page):
             self.status.set_state("待检查", theme.TEXT_FAINT)
         self.check_button.setEnabled(acknowledged and not busy)
         self.check_button.setToolTip(
-            "" if acknowledged else "请先勾选「我已阅读，并了解适用范围与真实设备操作风险」。")
+            "" if acknowledged else "请先勾选「启动检查」里的「我已阅读」确认。")
 
-    def _section(self, section: dict) -> QWidget:
-        wrapper = QFrame()
-        wrapper.setObjectName("Inset")
-        inset_policy = wrapper.sizePolicy()
-        inset_policy.setHeightForWidth(True)
-        wrapper.setSizePolicy(inset_policy)
-        layout = QVBoxLayout(wrapper)
-        layout.setContentsMargins(14, 12, 14, 12)
-        layout.setSpacing(6)
-        head = QHBoxLayout()
-        head.setSpacing(8)
-        level = str(section.get("level", "info"))
-        marker = QLabel(chr(0x25CF))
-        marker.setStyleSheet(f"color: {theme.LEVEL_COLORS.get(level, theme.TEXT_MUTED)};")
-        head.addWidget(marker)
-        title = QLabel(str(section.get("title", "")))
-        title.setStyleSheet("font-weight: 600;")
-        head.addWidget(title, 1)
-        head.addWidget(Badge({"risk": "风险", "scope": "范围"}.get(level, "")))
-        layout.addLayout(head)
-        body = WrapLabel(str(section.get("body", "")))
-        body.setObjectName("Muted")
-        layout.addWidget(body)
-        source = str(section.get("source_url") or "")
-        if source:
-            link = DocLink("查看官方说明 ↗")
-            link.setToolTip(source)
-            link.clicked.connect(lambda _=False, url=source: self.app.open_url(url))
-            layout.addWidget(link)
-        return wrapper
+        if busy:
+            hint = "操作进行中，请稍候。"
+        elif not acknowledged:
+            hint = "勾选右侧确认后，即可运行启动检查。"
+        elif not checked:
+            hint = "已确认风险。请运行右上角的「开始启动检查」。"
+        elif ready:
+            hint = "全部通过，可以进入「相机准备」。"
+        else:
+            hint = "按上面的提示处理后，重新运行启动检查。"
+        self.env_hint.setText(hint)
 
 
 class PreparationPage(Page):
@@ -395,7 +430,7 @@ class HomePage(Page):
         self.feature_rows: dict[str, FeatureRow] = {}
         self.root.addWidget(self.features_card)
 
-        self.backup_card = Card("功能状态备份")
+        self.backup_card = Card("功能状态备份", "恢复会把整份功能状态写回，与勾选无关。")
         backup_row = QHBoxLayout()
         backup_row.setSpacing(10)
         self.backup_combo = QComboBox()
@@ -409,8 +444,9 @@ class HomePage(Page):
         self.restore_button.clicked.connect(self._restore)
         backup_row.addWidget(self.restore_button)
         self.backup_card.add_layout(backup_row)
-        self.backup_hint = WrapLabel("")
+        self.backup_hint = QLabel("")
         self.backup_hint.setObjectName("Faint")
+        self.backup_hint.setWordWrap(False)
         self.backup_card.add(self.backup_hint)
         self.root.addWidget(self.backup_card)
 
@@ -516,7 +552,14 @@ class HomePage(Page):
                 self.backup_combo.setCurrentIndex(index)
         self.backup_button.setEnabled(bool(snapshot.get("compatible")) and not snapshot.get("busy"))
         self.restore_button.setEnabled(bool(backups) and not snapshot.get("busy"))
-        self.backup_hint.setText(f"备份目录：{snapshot.get('backup_dir', '')}（恢复会把整份功能状态写回，与勾选无关）" if snapshot.get("backup_dir") else "")
+        backup_dir = str(snapshot.get("backup_dir") or "")
+        if backup_dir:
+            tail = "\\".join(backup_dir.rstrip("\\").split("\\")[-2:])
+            self.backup_hint.setText(f"备份目录：…\\{tail}")
+            self.backup_hint.setToolTip(backup_dir)
+        else:
+            self.backup_hint.setText("")
+            self.backup_hint.setToolTip("")
         connected = bool(snapshot.get("connected"))
         self.reconnect_button.setText("断开连接" if connected else "重新连接")
         for button in (self.unlock_button, self.close_button):

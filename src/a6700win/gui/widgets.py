@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtWidgets import (
-    QCheckBox, QFrame, QHBoxLayout, QLabel, QPlainTextEdit, QPushButton,
+    QCheckBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QPlainTextEdit, QPushButton,
     QSizePolicy, QToolButton, QVBoxLayout, QWidget,
 )
 
@@ -22,15 +22,25 @@ class Card(QFrame):
         self.body = QVBoxLayout(self)
         self.body.setContentsMargins(18, 16, 18, 16)
         self.body.setSpacing(12)
-        self.header = QHBoxLayout()
-        self.header.setSpacing(10)
         self.title_label = QLabel(title)
         self.title_label.setObjectName("SectionTitle")
-        self.header.addWidget(self.title_label)
-        self.header.addStretch(1)
         self.subtitle_label = QLabel(subtitle)
         self.subtitle_label.setObjectName("Faint")
-        self.header.addWidget(self.subtitle_label)
+        # 标题与说明上下两行，避免说明在标题右侧拉出一条长句。
+        self.head_title = QVBoxLayout()
+        self.head_title.setSpacing(3)
+        self.head_title.addWidget(self.title_label)
+        self.head_title.addWidget(self.subtitle_label)
+        self.header = QHBoxLayout()
+        self.header.setSpacing(10)
+        self.head_left = QHBoxLayout()
+        self.head_left.setSpacing(10)
+        self.head_right = QHBoxLayout()
+        self.head_right.setSpacing(10)
+        self.header.addLayout(self.head_title)
+        self.header.addLayout(self.head_left)
+        self.header.addStretch(1)
+        self.header.addLayout(self.head_right)
         self.body.addLayout(self.header)
         self.title_label.setVisible(bool(title))
         self.subtitle_label.setVisible(bool(subtitle))
@@ -225,7 +235,7 @@ class CheckLine(QWidget):
         mark.setStyleSheet(f"color: {theme.SUCCESS if ok else theme.DANGER}; font-weight: 700;")
         layout.addWidget(mark)
         name = QLabel(str(row.get("name", row.get("id", ""))))
-        name.setMinimumWidth(120)
+        name.setFixedWidth(150)
         layout.addWidget(name)
         detail = str(row.get("detail", ""))
         detail_label = WrapLabel(detail)
@@ -236,6 +246,47 @@ class CheckLine(QWidget):
         if self.remediation and not ok:
             self.setToolTip(self.remediation)
             detail_label.setToolTip(self.remediation)
+
+
+class SectionRow(QWidget):
+    """须知里的一条：左侧序号 + 标题（可带标签）+ 正文，没有内层边框。"""
+
+    def __init__(self, index: int, section: dict, opener=None, text_width: int = 620,
+                 parent: QWidget | None = None):
+        super().__init__(parent)
+        grid = QGridLayout(self)
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setHorizontalSpacing(16)
+        grid.setVerticalSpacing(8)
+        grid.setColumnStretch(1, 1)
+
+        number = QLabel(f"{index:02d}")
+        number.setObjectName("SectionIndex")
+        number.setFixedWidth(22)
+        number.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        grid.addWidget(number, 0, 0, 1, 1, Qt.AlignTop)
+
+        head = QHBoxLayout()
+        head.setSpacing(10)
+        title = QLabel(str(section.get("title", "")))
+        title.setObjectName("RowTitle")
+        head.addWidget(title)
+        head.addStretch(1)
+        level = str(section.get("level", "info"))
+        head.addWidget(Badge({"risk": "风险", "scope": "范围"}.get(level, "")))
+        grid.addLayout(head, 0, 1)
+
+        body = WrapLabel(str(section.get("body", "")))
+        body.setObjectName("Muted")
+        body.setMaximumWidth(text_width)
+        grid.addWidget(body, 1, 1)
+
+        source = str(section.get("source_url") or "")
+        if source and opener is not None:
+            link = DocLink("查看官方说明 ↗")
+            link.setToolTip(source)
+            link.clicked.connect(lambda _=False, url=source: opener(url))
+            grid.addWidget(link, 2, 1, Qt.AlignLeft)
 
 
 class StepCard(QFrame):

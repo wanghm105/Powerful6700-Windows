@@ -131,7 +131,7 @@ def test_notice_gates_check_on_acknowledgement(app):
     page.render(dict(base))
     assert page.ack.text() == "我已阅读，并了解适用范围与真实设备操作风险"
     assert not page.check_button.isEnabled(), "未勾选阅读确认时不应能启动检查"
-    assert page.step_reason(base).startswith("请先勾选")
+    assert page.step_reason(base).startswith("勾选")
 
     acked = dict(base, notice_acknowledged=True)
     page.render(acked)
@@ -177,5 +177,7 @@ def test_notice_acknowledge_sits_on_the_right(app):
     left = page.ack.mapTo(page, page.ack.rect().topLeft()).x()
     right = left + page.ack.width()
     assert left > page.width() / 2, f"阅读确认应靠右，实际 x={left} 页宽={page.width()}"
-    assert abs(right - (page.width() - 30)) <= 2, f"阅读确认右边缘应贴住右边距，实际 {right}"
+    card_right = page.env_card.mapTo(page, page.env_card.rect().topRight()).x()
+    margin = card_right - right
+    assert 0 <= margin <= 24, f"阅读确认应贴住卡片内容右缘，实际留白 {margin}"
     page.close()

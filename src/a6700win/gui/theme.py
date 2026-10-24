@@ -50,6 +50,17 @@ QLabel#Subtitle {{ color: {TEXT_MUTED}; font-size: 13px; }}
 QLabel#SectionTitle {{ font-size: 15px; font-weight: 600; }}
 QLabel#Muted {{ color: {TEXT_MUTED}; }}
 QLabel#Faint {{ color: {TEXT_FAINT}; font-size: 12px; }}
+QLabel#RowTitle {{ font-size: 14px; font-weight: 600; }}
+QLabel#Verdict {{
+    color: #9ff0d2;
+    background: #10241d;
+    border: 1px solid #1d3a30;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-weight: 600;
+}}
+QLabel#SectionIndex {{ color: {TEXT_FAINT}; font-size: 11px; font-weight: 600; letter-spacing: 0.8px; padding-top: 4px; }}
+QLabel#Lead {{ color: {TEXT_MUTED}; font-size: 14px; }}
 QLabel#StepChip {{ color: {ACCENT}; font-size: 12px; font-weight: 600; letter-spacing: 0.6px; }}
 QFrame#Footer {{ background: {SURFACE}; border-top: 1px solid {BORDER_SOFT}; }}
 QLabel#Badge {{

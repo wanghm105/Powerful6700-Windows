@@ -2,6 +2,7 @@
 """自定义外观页：把四个菜单项换成 CC / NC / 理光正片 / 理光负片 的配色。"""
 from __future__ import annotations
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from .. import looks as looks_mod
@@ -45,38 +46,33 @@ class LooksPage(Page):
 
         self.restore_card = Card("能不能无损还原")
         verdict = WrapLabel("能：四条颜色记录逐字节写回出厂值，不留下任何固件改动。")
-        verdict.setStyleSheet(f"color: {theme.SUCCESS}; font-weight: 600;")
+        verdict.setObjectName("Verdict")
         self.restore_card.add(verdict)
-        for text in (
-            "还原做什么：把 bank 1 / 4 / 6 / 14 写回配方文件里的出厂 64 字节（factory_hex），"
-            "随后整单元回读校验；其余 28 条记录一个字节都不动。",
-            "不写什么：全程只写 CP 运行时单元，不碰任何固件分区（/cp、/usr、appFw 都不写），"
-            "所以不存在刷坏固件的风险，也不需要固件包。",
-            "怎么算完成：点「还原本页外观」→ 再点「检测当前状态」，四条都显示「出厂外观」→ "
-            "正常关机一次再开机（相机会在关机时把当前 RAM 写进 /setting/BACKUP.BIN）。",
-            "什么会白做：写入或还原后直接拔电池、断电，RAM 会丢回上一次落盘的副本，"
-            "开机看到的仍是旧状态。",
-        ):
-            line = WrapLabel(text)
-            line.setObjectName("Muted")
-            self.restore_card.add(line)
+        self._facts(self.restore_card, (
+            ("还原做什么", "把 bank 1 / 4 / 6 / 14 写回配方文件里的出厂 64 字节（factory_hex），"
+                     "随后整单元回读校验；其余 28 条记录一个字节都不动。"),
+            ("不写什么", "全程只写 CP 运行时单元，不碰任何固件分区（/cp、/usr、appFw 都不写），"
+                    "所以不存在刷坏固件的风险，也不需要固件包。"),
+            ("怎么算完成", "点「还原本页外观」→ 再点「检测当前状态」，四条都显示「出厂外观」→ "
+                     "正常关机一次再开机（相机会在关机时把当前 RAM 写进 /setting/BACKUP.BIN）。"),
+            ("什么会白做", "写入或还原后直接拔电池、断电，RAM 会丢回上一次落盘的副本，"
+                     "开机看到的仍是旧状态。"),
+        ))
         self.root.addWidget(self.restore_card)
 
         self.fit_card = Card("拟合到什么程度")
-        for text in (
-            "参考数据：A7C2 项目的 19 张真实直出对照图（6 个场景 × 3 组四宫格，只做过缩放与拼接，"
-            "没有任何曝光、白平衡或色彩调整）。",
-            "做法：每个外观按 12 个 30° 色相档取色度中位数，与本机同场景样张对齐，再用"
-            "「基底记录 × 系数 + 第 2 组 (Cb,Cr) 缩放」拟合。RMS 是 12 档「实测 / 目标」的均方根误差，越低越接近。",
-            "结果：CC 0.183、NC 0.173（中段八档误差 0.03–0.09）；PF 0.189、NF 0.330 —— "
-            "PF / NF 只做到低饱和近似，不是逐像素复刻。",
-            "硬边界：① 蓝端 0–30° 与 330–360° 压不下来（CC 实测 0.95 / 1.06，目标 0.77 / 0.53）；"
-            "② 本机型只有 12 组 (Cb,Cr) 和一个宽把手，做不出 NC 的窄品红缺口与 PF / NF 的局部反向；"
-            "③ 富士的 S 形影调曲线没有对应图层，只复刻颜色浓度与色相分布。",
-        ):
-            line = WrapLabel(text)
-            line.setObjectName("Muted")
-            self.fit_card.add(line)
+        self._facts(self.fit_card, (
+            ("参考数据", "A7C2 项目的 19 张真实直出对照图（6 个场景 × 3 组四宫格，"
+                    "只做过缩放与拼接，没有任何曝光、白平衡或色彩调整）。"),
+            ("做法", "每个外观按 12 个 30° 色相档取色度中位数，与本机同场景样张对齐，再用"
+                 "「基底记录 × 系数 + 第 2 组 (Cb,Cr) 缩放」拟合。RMS 是 12 档「实测 / 目标」的"
+                 "均方根误差，越低越接近。"),
+            ("结果", "CC 0.183、NC 0.173（中段八档误差 0.03–0.09）；PF 0.189、NF 0.330 —— "
+                 "PF / NF 只做到低饱和近似，不是逐像素复刻。"),
+            ("硬边界", "① 蓝端 0–30° 与 330–360° 压不下来（CC 实测 0.95 / 1.06，目标 0.77 / 0.53）；"
+                  "② 本机型只有 12 组 (Cb,Cr) 和一个宽把手，做不出 NC 的窄品红缺口与 PF / NF 的局部反向；"
+                  "③ 富士的 S 形影调曲线没有对应图层，只复刻颜色浓度与色相分布。"),
+        ))
         self.root.addWidget(self.fit_card)
 
         self.state_card = Card("当前状态", "读取 CP 色度单元 0x02A40001")
@@ -120,6 +116,23 @@ class LooksPage(Page):
         self.root.addWidget(self.log_card, 1)
 
     # ---------------------------------------------------------------- 渲染
+    def _facts(self, card: Card, rows) -> None:
+        """键值式的说明列表：左侧名称、右侧正文，正文按列宽自动换行。"""
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(16)
+        grid.setVerticalSpacing(10)
+        grid.setColumnMinimumWidth(0, 76)
+        for row, (name, text) in enumerate(rows):
+            label = QLabel(name)
+            label.setObjectName("Faint")
+            label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+            body = WrapLabel(text)
+            body.setObjectName("Muted")
+            grid.addWidget(label, row, 0, Qt.AlignTop)
+            grid.addWidget(body, row, 1)
+        grid.setColumnStretch(1, 1)
+        card.add_layout(grid)
+
     def _mapping_table(self) -> QGridLayout:
         table = QGridLayout()
         table.setHorizontalSpacing(20)
@@ -127,6 +140,8 @@ class LooksPage(Page):
         for column, text in enumerate(("相机菜单槽位", "改写为", "颜色记录", "拟合 RMS")):
             head = QLabel(text)
             head.setObjectName("Faint")
+            if column >= 2:
+                head.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
             table.addWidget(head, 0, column)
         try:
             items = looks_mod.profile()
@@ -139,10 +154,12 @@ class LooksPage(Page):
             table.addWidget(QLabel(str(item.get("label") or item["name"])), row, 1)
             bank = QLabel(f"bank {item['bank']}")
             bank.setObjectName("Faint")
+            bank.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
             table.addWidget(bank, row, 2)
             rms = item.get("rms")
             fit = QLabel(f"RMS {rms:.3f}" if isinstance(rms, (int, float)) else "近似")
             fit.setObjectName("Faint")
+            fit.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
             table.addWidget(fit, row, 3)
         table.setColumnStretch(1, 1)
         return table
