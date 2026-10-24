@@ -6,7 +6,8 @@
   运行时由 a6700win.paths.ensure_vendor_on_path() 从 _internal/third_party 导入；
 - libusb-1.0.dll：放在 _internal 根目录，a6700win.usb.windows_auth 会先找
   libusb_package，再退到 exe 目录与 _MEIPASS 根；
-- third_party/libwdi/wdi-simple.exe（若已下载）：驱动准备页离线可用。
+- third_party/libwdi：libwdi 的 wdi-simple.exe 与 amd64/x86 载荷随包分发，
+  驱动准备页完全离线（运行期由 ensure_wdi() 复制到数据目录的 driver 下）。
 
 构建：.venv\\Scripts\\python.exe -m PyInstaller packaging/Powerful6700.spec --noconfirm
 """

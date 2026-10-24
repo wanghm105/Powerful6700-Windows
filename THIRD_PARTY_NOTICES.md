@@ -6,6 +6,7 @@
 |---|---|---|
 | [ma1co/Sony-PMCA-RE](https://github.com/ma1co/Sony-PMCA-RE)，固定提交 `a82f5baaa8e9c3d9f28f94699e860fb2e48cc8e0` | `usb/reference/sony_pmca/constants.py`、`crypto.py`，源码包另含 `verified/usb/reference/sony_pmca/` 原件 | MIT，Copyright (c) 2015 ma1co |
 | [ajalt/python-sha1](https://github.com/ajalt/python-sha1) | 上述 `crypto.py` 内的兼容 SHA-1 实现 | MIT，Copyright (c) 2013-2015 AJ Alt |
+| [pbatard/libwdi](https://github.com/pbatard/libwdi) v1.0 x64 发布包 | `third_party/libwdi/wdi-simple.exe` 与同目录 `amd64/`、`x86/` 下的驱动载荷（libusb0、libusbK、WinUSB 协装器） | libwdi 本体为 LGPL-3.0，Copyright (c) 2010-2024 Pete Batard；其中的驱动载荷沿用各自上游许可，原始归属见 libwdi 发布包。随包分发是为了让「驱动准备」页完全离线 |
 
 完整许可在对应目录的 `LICENSE.txt` 和 `LICENSE-python-sha1.txt`，运行包与源码包都必须保留。归集文件的来源与逐文件哈希见源码包 `verified/SOURCES.json`；运行版本适配差异见 `docs/PROVENANCE.md` 与 `CHANGELOG.md`。
 

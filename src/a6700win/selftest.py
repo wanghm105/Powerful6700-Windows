@@ -76,8 +76,7 @@ def run(output: str | Path | None = None) -> dict:
 
         return (str(driver.wdi_executable()), driver.wdi_available())
 
-    _check(results, "wdi", "驱动安装组件（按需下载）", wdi)
-    results[-1]["optional"] = True
+    _check(results, "wdi", "驱动安装组件（随包附带）", wdi)
 
     def controller():
         from .app import build_controller
@@ -94,7 +93,7 @@ def run(output: str | Path | None = None) -> dict:
         app=version.APP_NAME,
         version=version.APP_VERSION,
         platform=sys.platform,
-        ok=all(item["ok"] for item in results if item["id"] != "wdi"),
+        ok=all(item["ok"] for item in results),
         checks=results,
         paths=paths.describe(),
     )

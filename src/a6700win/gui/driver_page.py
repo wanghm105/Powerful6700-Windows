@@ -15,7 +15,7 @@ class DriverPage(Page):
     subtitle = (
         "Windows 需要把相机的 USB 接口绑定到 WinUSB，Python 才能通过 libusb 与相机通信。"
         "本页仅在真实设备模式下使用；绑定过程需要管理员权限，且只针对索尼相机的 "
-        "0x047D / 0x0E76 / 0x0336 三个 PID。"
+        "0x047D / 0x0E76 / 0x0336 三个 PID。驱动组件随安装包附带，不需要联网。"
     )
 
     def __init__(self, app, parent: QWidget | None = None):
@@ -54,6 +54,7 @@ class DriverPage(Page):
         self.scan_button.clicked.connect(self._scan)
         actions.addWidget(self.scan_button)
         self.download_button = QPushButton("下载驱动组件")
+        self.download_button.setToolTip("只有包内组件被安全软件删掉时才需要联网补装")
         self.download_button.setObjectName("Ghost")
         self.download_button.clicked.connect(self._download)
         actions.addWidget(self.download_button)
@@ -100,8 +101,12 @@ class DriverPage(Page):
             line.addWidget(Pill(f"服务：{service}", theme.SUCCESS if row.get("winusb") else theme.WARNING))
             self.device_box.addLayout(line)
 
-        self.wdi_path.setText(f"驱动组件：{report.get('wdi_path', driver_mod.wdi_executable())}"
-                              if report else "")
+        if report:
+            source = "随包附带" if report.get("wdi_bundled") else "已下载" 
+            self.wdi_path.setText(
+                f"驱动组件（{source}）：{report.get('wdi_path', driver_mod.wdi_executable())}")
+        else:
+            self.wdi_path.setText("")
         self.install_button.setEnabled(bool(devices) and not snapshot.get("busy"))
         self.scan_button.setEnabled(not snapshot.get("busy"))
         self.download_button.setEnabled(not snapshot.get("busy") and not report.get("wdi"))

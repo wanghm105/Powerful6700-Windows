@@ -1,10 +1,19 @@
-# Powerful6700 · Windows 0.3.0-win.1
+# Powerful6700 · Windows 0.3.1-win.1
 
 Sony A6700 工具 [Powerful6700](https://github.com/xyzhangxin/sony-a6700-powerful)（上游 0.2.0，GPL-3.0）的 Windows 端实现。
 
+## 0.3.1：驱动组件随包附带（不再依赖联网）
+
+- libwdi 的 `wdi-simple.exe` 与 `amd64/`、`x86/` 驱动载荷打进安装包（`_internal/third_party/libwdi`，7.4 MB）；首次绑定驱动时由 `ensure_wdi()` 复制到数据目录的 `driver` 子目录，**完全离线**。之前国内网络打不开 GitHub Release、点「下载驱动组件」一直失败、卡在「缺少组件」无法绑定 WinUSB 的问题不再出现。
+- 「下载驱动组件」按钮保留为兜底：只有包内组件被安全软件删掉时才用，且改为依次重试 `https://ghfast.top/`、`https://gh-proxy.com/` 两个反代；随包组件在时直接跳过网络。
+- 冻结包自检的 `wdi` 项从「可选、失败不计入」改成必需项，缺组件会直接判自检不通过。
+- 压缩包根目录新增 `必读.txt`（十节上手流程：解压、SmartScreen、驱动、四步功能、还原、常见问题）以及 `LICENSE`、`NOTICE`、`THIRD_PARTY_NOTICES.md`。
+- `packaging/build.ps1` 支持 `-DistPath` / `-WorkPath`，程序正在运行时也能把新包构建到别处。
+
 ## 本版新增：自定义外观
 
-- 菜单第 2 项 → **Classic Chrome**，第 3 项 → **Classic Negative**（逐色相 RMS 0.194 / 0.190，按 A7C2 的 19 张直出对照图定标）；
+
+- 菜单第 2 项 → **Classic Chrome**，第 3 项 → **Classic Negative**（逐色相 RMS 0.183 / 0.173，按 A7C2 的 19 张直出对照图定标）；
 - 第 4 项 → **Positive Film**、第 5 项 → **Negative Film**（低饱和轻量版）；
 - 新增 `tools/looks_apply.py` + `docs/looks-profile.json`：一条命令幂等写入四个外观；
 - 新增 `docs/LOOKS.md`（能力、边界、还原步骤）与 `docs/LOOK-COLOR.md`（全部调查数据与失败路径）。
@@ -42,7 +51,7 @@ Sony A6700 工具 [Powerful6700](https://github.com/xyzhangxin/sony-a6700-powerf
 2. 相机设为 **USB 连接模式 = 海量存储(MSC)**，关闭 FTP，接一根数据线且只接一台目标相机
 3. 双击 `Powerful6700.exe`（首次绑定驱动建议右键「以管理员身份运行」）
 4. 「操作前须知」：启动检查 → 勾选阅读确认 → 底部「下一步：驱动准备」
-5. 「驱动准备」页：扫描设备 → 下载驱动组件 → 绑定 WinUSB（0x0E76；第一次只读检查时出现的 0x0336 会由程序自动绑定）
+5. 「驱动准备」页：扫描设备 → 绑定 WinUSB（libwdi 组件随包附带，完全离线；0x0E76 首次绑定要 UAC；第一次只读检查时出现的 0x0336 会由程序自动绑定）
 6. 「相机准备」四项确认 → 开始只读检查 → 「功能管理」勾选功能 → 解锁／关闭
 
 ## 校验

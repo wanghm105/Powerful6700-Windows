@@ -43,7 +43,16 @@ def test_scan_report_shape():
     """只报告真实枚举到的接口：没相机就是空列表，有相机就必须落在白名单 PID 上。"""
     report = driver.scan()
     assert report["platform"] == "win32"
-    assert set(report) >= {"platform", "architecture", "admin", "wdi", "wdi_path", "devices", "driver_required"}
+    assert set(report) >= {
+        "platform",
+        "architecture",
+        "admin",
+        "wdi",
+        "wdi_bundled",
+        "wdi_path",
+        "devices",
+        "driver_required",
+    }
     assert isinstance(report["devices"], list)
     for row in report["devices"]:
         # 扫描会列出所有在场的 Sony 设备（含 HID 0x096F 这类非工具目标），
@@ -68,3 +77,35 @@ def test_ensure_pid_explains_missing_component():
     with pytest.raises(driver.DriverError) as excinfo:
         driver.ensure_pid(0x0E76, lambda message: None)
     assert "驱动准备" in str(excinfo.value)
+
+
+def _fake_bundle(tmp_path, monkeypatch):
+    # 造一个随包 libwdi 目录，并让 paths 指向它。
+    bundle = tmp_path / "third_party" / "libwdi"
+    (bundle / "amd64").mkdir(parents=True)
+    (bundle / "wdi-simple.exe").write_bytes(b"stub")
+    (bundle / "amd64" / "winusbcoinstaller2.dll").write_bytes(b"payload")
+    data = tmp_path / "data" / "driver"
+    monkeypatch.setattr(driver.paths, "bundled_root", lambda: tmp_path)
+    monkeypatch.setattr(driver.paths, "driver_dir", lambda: data)
+    return bundle, data
+
+
+def test_ensure_wdi_copies_bundled_tree(tmp_path, monkeypatch):
+    bundle, data = _fake_bundle(tmp_path, monkeypatch)
+    assert driver.wdi_bundled()
+    target = driver.ensure_wdi(lambda message: None)
+    assert target == data / "wdi-simple.exe"
+    assert target.read_bytes() == b"stub"
+    assert (data / "amd64" / "winusbcoinstaller2.dll").read_bytes() == b"payload"
+
+
+def test_download_wdi_prefers_bundled_copy(tmp_path, monkeypatch):
+    _fake_bundle(tmp_path, monkeypatch)
+
+    def boom(*args, **kwargs):
+        raise AssertionError("随包组件在时不应该联网")
+
+    monkeypatch.setattr(driver, "urlopen", boom)
+    path = driver.download_wdi(lambda message: None)
+    assert path.name == "wdi-simple.exe" and path.is_file()

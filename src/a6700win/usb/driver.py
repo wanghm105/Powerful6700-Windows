@@ -15,6 +15,7 @@ from __future__ import annotations
 import ctypes
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -45,6 +46,8 @@ PID_TITLES = {
 }
 
 WDI_URL = "https://github.com/Timocop/libwdi-wdi-releases/releases/download/v1.0/x64.zip"
+# 国内直连 GitHub 常被拦，下载按钮会按顺序重试这两个反代。
+MIRRORS = ("https://ghfast.top/", "https://gh-proxy.com/")
 WDI_EXE_NAME = "wdi-simple.exe"
 CREATE_NO_WINDOW = 0x08000000
 SEE_MASK_NOCLOSEPROCESS = 0x00000040
@@ -86,50 +89,90 @@ def driver_arguments(executable: str | Path, pid: int, destination: str | Path) 
     ]
 
 
+def bundled_wdi_dir() -> Path:
+    # 随包附带的 libwdi 目录：冻结包是 _internal/third_party/libwdi，源码运行是仓库 third_party/libwdi。
+    return paths.bundled_root() / "third_party" / "libwdi"
+
+
+def wdi_bundled() -> bool:
+    return (bundled_wdi_dir() / WDI_EXE_NAME).is_file()
+
+
 def wdi_executable() -> Path:
-    bundled = paths.bundled_root() / "third_party" / "libwdi" / WDI_EXE_NAME
+    # 数据目录优先；还没铺开时先用随包副本，Windows 上不需要联网。
+    local = paths.driver_dir() / WDI_EXE_NAME
+    if local.is_file():
+        return local
+    bundled = bundled_wdi_dir() / WDI_EXE_NAME
     if bundled.is_file():
         return bundled
-    return paths.driver_dir() / WDI_EXE_NAME
+    return local
 
 
 def wdi_available() -> bool:
     return wdi_executable().is_file()
 
 
+def _copy_tree(source: Path, destination: Path) -> None:
+    for item in source.rglob("*"):
+        if item.is_file():
+            target = destination / item.relative_to(source)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(item, target)
+
+
+def ensure_wdi(progress=lambda message: None) -> Path:
+    # wdi-simple 需要同级的 amd64/ 载荷，所以整棵树铺到数据目录再调用。
+    local = paths.driver_dir() / WDI_EXE_NAME
+    if local.is_file():
+        return local
+    bundled = bundled_wdi_dir()
+    if (bundled / WDI_EXE_NAME).is_file():
+        progress("正在准备随包附带的驱动组件…")
+        _copy_tree(bundled, paths.driver_dir())
+    return local
+
+
 def download_wdi(progress=lambda message: None) -> Path:
-    """下载并解压 wdi-simple.exe 到数据目录；已存在则直接返回。"""
-    target = wdi_executable()
+    # 离线优先：随包副本直接铺开，只有源码运行且没带组件时才联网。
+    target = ensure_wdi(progress)
     if target.is_file():
+        progress("驱动组件随包附带，已就绪，不需要联网。")
         return target
     folder = paths.driver_dir()
     archive = folder / "libwdi-x64.zip"
-    progress("正在下载驱动安装组件（libwdi，约几 MB）…")
-    request = Request(WDI_URL, headers={"User-Agent": "Powerful6700Win"})
-    with urlopen(request, timeout=120) as response:  # noqa: S310 - 固定 HTTPS 地址
-        data = response.read()
+    data = b""
+    errors = []
+    for mirror in (None,) + MIRRORS:
+        url = WDI_URL if mirror is None else mirror + WDI_URL
+        progress("正在下载驱动安装组件（libwdi，约几 MB）…")
+        try:
+            request = Request(url, headers={"User-Agent": "Powerful6700Win"})
+            with urlopen(request, timeout=120) as response:  # noqa: S310 - 固定 HTTPS 地址
+                data = response.read()
+        except Exception as exc:  # noqa: BLE001 - 逐个镜像重试
+            errors.append("%s: %s" % (url, exc))
+            continue
+        if len(data) >= 10000:
+            break
+        errors.append("%s: 内容过短" % url)
+        data = b""
     if len(data) < 10000:
-        raise DriverError("驱动组件下载内容异常，请检查网络后重试。")
+        raise DriverError(
+            "驱动组件下载失败（%s）。可以让对方把 third_party/libwdi 目录一起复制到程序的 _internal 下，"
+            "或手工下载 %s 解压到数据目录的 driver 子目录。" % ("; ".join(errors[:2]) or "网络不可用", WDI_URL)
+        )
     archive.write_bytes(data)
     progress("正在解压驱动安装组件…")
     try:
         with zipfile.ZipFile(archive) as bundle:
-            names = {Path(item).name: item for item in bundle.namelist()}
-            if WDI_EXE_NAME not in names:
-                raise DriverError("驱动组件压缩包内缺少 wdi-simple.exe。")
-            for member in bundle.namelist():
-                if member.endswith("/"):
-                    continue
-                destination = folder / Path(member).name
-                with bundle.open(member) as source, open(destination, "wb") as sink:
-                    sink.write(source.read())
+            bundle.extractall(folder)
     finally:
         archive.unlink(missing_ok=True)
-    if not target.is_file():
+    if not (folder / WDI_EXE_NAME).is_file():
         raise DriverError("驱动组件解压后未找到 wdi-simple.exe。")
     progress("驱动安装组件已就绪。")
-    return target
-
+    return folder / WDI_EXE_NAME
 
 def scan() -> dict:
     """只读扫描：哪些相机 PID 在场、驱动是否已经就绪。"""
@@ -153,6 +196,7 @@ def scan() -> dict:
         architecture=os.environ.get("PROCESSOR_ARCHITECTURE", ""),
         admin=is_admin(),
         wdi=wdi_available(),
+        wdi_bundled=wdi_bundled(),
         wdi_path=str(wdi_executable()),
         enumeration=state,
         devices=devices,
@@ -243,9 +287,9 @@ def install(pids, progress=lambda message: None, timeout_seconds: float = 180.0)
     if not wanted:
         return dict(driver_changed=False, pids=[], skipped=list(pids))
 
-    executable = wdi_executable()
+    executable = ensure_wdi(progress)
     if not executable.is_file():
-        raise DriverError("缺少驱动安装组件 wdi-simple.exe，请先在“驱动准备”页下载。")
+        raise DriverError("缺少驱动安装组件 wdi-simple.exe，请重新解压安装包，或在“驱动准备”页点“下载驱动组件”。")
 
     job_dir = paths.driver_dir() / ("job-%s" % uuid.uuid4().hex[:12])
     job_dir.mkdir(parents=True, exist_ok=True)
