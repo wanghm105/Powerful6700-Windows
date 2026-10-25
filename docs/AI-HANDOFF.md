@@ -1,4 +1,4 @@
-﻿# AI-HANDOFF · 交接现场
+# AI-HANDOFF · 交接现场
 
 > **用法**：换一个对话、换一个人、或者上下文爆了，**只看这一个文件**就能接着干。
 > **规则**：每完成一小步（一次真机写入、一次构建、一次结论），**先改这里再往下走**；末尾「更新记录」按时间追加一行。
@@ -44,6 +44,8 @@
 
 **主链路全部真机打通**：只读检查、功能解锁关闭、功能状态备份还原、CP 外观色度写入与逐字节还原、菜单文字改写与还原（英文名 / 中文名两套，都验过）。
 **0.3.7 给只读检查加了自愈：相机回 `0x10000004`（界面上的「状态：04000010」）时，先清 `/tmp/jiritsu` 残留再发一次配置写入**；0.3.6 把写入链路改成「一帧发完」，并记下了一条真机结论：相机可能进入「一次上电只给一个服务会话」——0.3.5 的一次写入在这个状态下第二段必失败，绕开办法是把动作压进单个会话，彻底恢复要拔线 + 关机 + 取电池 1 分钟。颜色 + 名字的一次写入本身（`src/a6700win/bundle.py`、`tools/bundle_apply.py`，两段会话 + 冷却）界面与 CLI 都已就位，但走完整流程的真机验收还没做过；颜色与文字两条链路已分别用单会话在真机跑通。
+**发布状态**：0.3.7 已发 Release（tag `v0.3.7-win.1`，zip 47.9 MB / sha256 `6dd1c13b…`）。之后做过一轮「不上传」审计（固件 / 私人备份 / 密钥 / ProductInfo / 照片 / 原始抓包 / 完整日志）：仓库 248 个跟踪文件、701 个历史路径、5 个 Release 资产（逐个读中央目录）全部干净，规则固化成 `tools/check_publish.py`；Release 标题与正文的写法见 §12.4。
+
 **仍在做的**：外观颜色对 A7C2 直出的**定量拟合**——蓝端压不下去（旋钮在矩阵单元 `0x02A4000D` block 4，未标定），CC 定稿强度也还要用实拍确认（当前 RAM 是 pair2×0.60 + pair6=0，离线 RMS 0.164）。
 
 ---
@@ -357,15 +359,18 @@ _names(progress, report, restoring, colors_wrote)     # looknames.apply / lookna
 .\.venv\Scripts\python.exe .data\scratch\live_check_units.py
 ```
 
-按最后一次操作记录：
+按最后一次**实测**记录（不是推测；每次断电重开后再动相机都要重新读一遍）：
 
 | 项 | 状态 |
 |---|---|
-| 菜单文字 | **英文原名**，145,708 B，sha `9fd0bb497171…` |
-| CP 色度单元 | PT(bank 6) = **pair2×0.60 + pair6=0**（刚写入，只在 RAM）；NC/PF/NF 为定稿配方 |
-| `/setting/BACKUP.BIN` 色度副本 | 仍是 **pair2×0.70** 那版（用户误关机时落盘）→ 与 RAM 不一致，需正常关机落盘 |
-| 矩阵单元 `0x02A4000D` | 与出厂逐字节相同（未动） |
+| 菜单文字 | **英文原名**，145,708 B，sha `9fd0bb497171…`（单会话 `repair_oneshot.py official` 修复后登记为基线） |
+| CP 色度单元 | 配方版，整单元 sha `b0cab23b623c…`；PT(bank 6) = **pair2×0.60 + pair6=0**，NC/PF/NF 为定稿配方 |
+| `/setting/BACKUP.BIN` 色度副本 | 曾复核为与 RAM **逐字节相同**（`b0cab23b623c…`，正常关机等待 1 分钟后落盘） |
+| 矩阵单元 `0x02A4000D` | 与出厂逐字节相同（`59aed2edd1b0…`，未动） |
 | FL | 偏橙是**原厂 FL 本来的样子**（bank 8 与出厂逐字节相同） |
+| 相机最近一次枚举 | **0x096F（HidUsb，非 MSC）**，服务模式下若端点卡住要拔线 + 关机 + 取电池 1 分钟 |
+
+复核脚本（都在 `.data/scratch/`）：`verify_flush.py`（RAM 与 BACKUP 与配方三方比对）、`live_check_units.py`（CP/矩阵/BACKUP）、`bundle_status.py`（一个会话内同时读颜色与文字）。
 
 ⚠️ **不要在一个会话里既写 CP 单元又写 145 KB 文字**（实测 3 次，第 5～13 次传输必崩）。
 
@@ -425,9 +430,12 @@ _names(progress, report, restoring, colors_wrote)     # looknames.apply / lookna
 验收清单见 §9.5 末尾四条；跑完把结果补进 `docs/VALIDATION.md`。
 
 ### 12.4 版本与发布
-- `src/a6700win/version.py` 已是 `0.3.7`（0.3.4 已发 Release `v0.3.4-win.1`）
-- `packaging\build.ps1` 重建 → seed 基线库 → `--offline-self-test` 九项 → `--render-pages` 七页
-- 0.3.5 的 Release 资产（zip）等用户点头再传
+- `src/a6700win/version.py` 已是 `0.3.7`；已发 Release：`v0.2.0-win.1`、`v0.3.1-win.1`、`v0.3.2-win.1`、`v0.3.4-win.1`、`v0.3.7-win.1`（0.3.3 / 0.3.5 / 0.3.6 只在仓库记录里，没有单独发）
+- 发布流程：`packaging\build.ps1` → 重建后 **seed 基线库**（build 会删 `dist\.data`）→ `--offline-self-test` 九项 → `--render-pages` 七页 → `tools\make_release.ps1` 出 zip → `tools\check_publish.py --zip` 扫描 → `gh release create`
+- **不上传清单**（用户要求，2026-10-25）：固件、私人备份、密钥、ProductInfo、照片、原始抓包、完整日志。`tools/check_publish.py` 把这条变成可执行检查（扩展名 / 文件名 / 目录 / 体积 / zip 内容），干净时 exit 0
+- **标题写法**：`版本号 · 一句话说清解决了什么问题`，**不写 v 前缀**，例如「0.3.7 · 修好只读检查中途报错的问题」。不写内部实现（「配置写入自愈」这种不行）
+- **正文写法**：先一句现象，再 3–5 条改动，最后一句适用范围；状态码推导、测试数字留在 `docs/RELEASE-NOTES.md`
+- 以上两条 2026-10-25 被用户连续纠正三次才定下来，改标题时别退回旧写法
 
 ---
 
@@ -498,6 +506,8 @@ _names(progress, report, restoring, colors_wrote)     # looknames.apply / lookna
 | `flash_write.py` | 载荷读写（`--probe` / `--stat` / `--verify` / `--write-hex` / `--write-file`，写要 `--confirm yes-write`） |
 | `dump_camera.py` / `ls_camera.py` | 机身 dump 与目录列举 |
 | `build_write_payload.py` | 重编 `flash_write.elf` 并更新 manifest |
+| `check_publish.py` | 发布前扫描：仓库与 zip 里有没有固件/备份/密钥/ProductInfo/照片/抓包/日志（`--zip` 连带检查发布包） |
+| `make_release.ps1` | 打发布 zip（剔除 `.data`、自检 json） |
 
 ### 15.3 诊断脚本（`.data/scratch/`，不进仓库）
 
@@ -514,7 +524,10 @@ _names(progress, report, restoring, colors_wrote)     # looknames.apply / lookna
 | `VALIDATION.md` | 真机验收记录（含 USB 掉线、冷启动、关机等待） |
 | `CC-CN-PLAYBOOK.md` | 操作手册（怎么拍、怎么还原） |
 | `ARCHITECTURE.md` | 分层与模块表 |
-| `BUILD.md` / `PUBLISHING.md` / `RELEASE-NOTES.md` | 构建、发布、版本记录 |
+| `FEATURES.md` | 现有功能逐条说明（对应 README 功能状态表） |
+| `PROGRESS.md` | 开发进展速览（新功能 / 优化 / 可行性不通过） |
+| `BUILD.md` / `PUBLISHING.md` / `RELEASE-NOTES.md` | 构建、发布（含不上传清单与标题规范）、版本记录 |
+| `UI.md` | 界面排版规则 |
 | `CP-PARTITION.md` / `FIRMWARE-MAP.md` / `PERSIST-STORE.md` / `FLASH-WRITE.md` | 底层调查 |
 | `FL23-INVESTIGATION.md` / `FL2-ROUTE.md` / `FEASIBILITY-FL23.md` / `CPAPP-STATIC.md` | FL2/FL3 与 cpapp 静态分析 |
 | `CARD-SPEED.md` | 卡速等级与 caution 表 |
@@ -524,7 +537,8 @@ _names(progress, report, restoring, colors_wrote)     # looknames.apply / lookna
 
 ## 16. 未提交改动
 
-0.3.7（配置写入自愈 + `--inspect-once`）本批改动：`src/a6700win/dump.py`、`patches.py`、`cp.py`、`inspect_once.py`（新）、`__main__.py`、`version.py`、`tests/test_config_selfheal.py`（新）、`docs/RELEASE-NOTES.md`、`docs/VALIDATION.md`、`docs/AI-HANDOFF.md`。0.3.5 / 0.3.6 已提交。
+无。工作区干净，`main` 与 `origin/main` 同步（截至 2026-10-25 22:2x，HEAD `0d7d3de`）。
+0.3.7 的内容（配置写入自愈 + `--inspect-once`）已在 `3e3e676`；发布守卫在 `77be7be`；Release 标题与正文的三轮改写分别在 `454a62f`、`60a4ba3`、`98a01ed`、`1b1352b`、`0d7d3de`。
 
 ---
 
@@ -537,3 +551,6 @@ _names(progress, report, restoring, colors_wrote)     # looknames.apply / lookna
 - **2026-10-25 19:0x** · 用户 m10336「颜色和名字一次写入继续做」→ 新增 **`src/a6700win/bundle.py`**（两段会话编排 `apply` / `restore`、部分失败报告、`summary()`）、GUI「一次写入：颜色 + 名字」卡片（两按钮 + 结果日志 + 预设联动）、CLI `tools/bundle_apply.py`、`tests/test_bundle.py` 7 个用例；`cp._cooldown` 改成每 10 秒报剩余秒数、末尾报「冷却结束，重新连接相机…」。版本 0.3.4 → **0.3.5**。`pytest tests -q` → **93 passed / 1 skipped**。README / FEATURES / 本文同步；真机验收未做（清单在 §9.5）。
 - **2026-10-25 19:4x** · 真机事故收尾：0.3.5 的一次写入把语言资源写成半截（145,692 B，前 131,072 字节新版、尾巴旧版），之后连接一律在认证第一个包挂掉（`[Errno 32] Pipe error`），60 s 冷却无效 → 结论是相机进入了「一次上电只给一个服务会话」，绕开的办法是把动作压进单个会话，彻底恢复要拔线 + 关机 + 取电池 1 分钟。修复与验证：`.data/scratch/repair_oneshot.py official` 单会话内 `truncate` 145,692 → 145,708 + 一帧写完 145,708 字节（约 13 次往返）+ 整份回读，结果 `145708 B 9fd0bb497171 一致` 并登记基线（kind=renamed）→ **145,708 单帧可写，旧笔记的「Jiritsu 64 KiB 上限」被推翻**；随后 `.data/scratch/color_fix.py` 单会话把四条外观颜色写回配方，读回全部「配方在位」，名字仍是英文原名（CC=Classic Chrome / NC=Classic Neg. / PF=Positive Film / NF=Negative Film）。代码：`flash.WRITE_BLOCK = 0x20000`（`BLOCK = 0x8000` 只留给读）、`looknames._write_blob()` 改成 truncate → 分块写（载荷侧 pwrite/fsync/回读）→ 长度复核、`tests/test_flash.py::test_block_limit` 改用 `WRITE_BLOCK + 1`。文档：本文 §11.1 扩成四条、`docs/VALIDATION.md` 新增整节、`docs/FLASH-WRITE.md` 块上限改写、`docs/RELEASE-NOTES.md` 新增 0.3.6 节。版本 0.3.5 → **0.3.6**。`pytest tests -q` → 93 passed / 1 skipped。
 - **2026-10-25 20:0x** · 0.3.6 发布后用户在界面点只读检查，报「配置写入（SET_FILE2）」被拒（`0x10000004`）。这次定位到机理：`0x4010` 配置写入与我们的载荷共用 `/tmp/jiritsu/tmmc.jit`、`tmmc.dat`，上一次会话没干净结束时残留会让下一次被拒。删除命令的正确报文（A7C2 同款）是「先 select 目标路径，再发 `CMD_REMOVE`（18）且正文只有 `\0\xff`」——直接把路径塞进 `CMD_REMOVE` 会被拒成 `0x10000201`（真机实测）。做成自愈：`patches._windows_backend_file` 遇到 `0x10000004` 清一遍再重试一次；`cp._clear_temp` 在每个相机会话开头清一次；新增隐藏参数 `--inspect-once`（`src/a6700win/inspect_once.py`），用与界面相同的 controller 路径跑一次只读检查并把结论落 JSON，源码与冻结包都能用。真机复验：两个临时文件删除均 `True`、同会话整份只读读取 `260 块 / 133,120 字节`、`--inspect-once` 输出 `status: inspected` / `compatible: true` / `write_attempted: false`。新增 `tests/test_config_selfheal.py`（3 个用例），`pytest tests -q` → **96 passed / 1 skipped**。版本 0.3.6 → **0.3.7**。
+- **2026-10-25 20:1x** · 0.3.7 发布（`v0.3.7-win.1`，zip 47.9 MB / `6dd1c13b…`，唯一资产）；README 下载区对齐。随后用户要求「不上传固件、私人备份、密钥、ProductInfo、照片、原始抓包、完整日志」→ 全仓库审计（248 个跟踪文件、701 个历史路径、超长十六进制 0 命中、本机路径 0 命中）+ 5 个 Release 资产逐个读中央目录（264 / 291 / 291 / 291 / 291 条目，违规 0）；规则固化为 `tools/check_publish.py`（干净时 exit 0）、`.gitignore` 补 16 类路径、`docs/PUBLISHING.md` 新增硬规则第 4 条。提交 `77be7be`。
+- **2026-10-25 21:0x–22:1x** · 用户连续三轮纠正 Release 标题写法：①「按照功能来写」②「根据改动内容简洁写」③「写版本号加解决问题的简述，过一遍 humanlizer」④「不写 V 了或者大写 V 都行」。最终规范：**`版本号 · 一句话说清解决了什么问题`，不写 v 前缀，正文 = 现象 + 3–5 条改动 + 适用范围**（`docs/PUBLISHING.md` 第 7、8 条，`docs/RELEASE-NOTES.md` 开头也有同一段）。五个 Release 的标题与正文都按这套重写（`gh release edit`，tag 不动）。标题示例：「0.3.7 · 修好只读检查中途报错的问题」。提交 `454a62f` / `60a4ba3` / `98a01ed` / `1b1352b` / `0d7d3de`。
+- **2026-10-25 22:2x** · 交接检查：工作区干净、`main` == `origin/main`（`0d7d3de`）、五个 Release 标题符合新规范、`tools/check_publish.py --zip` 输出「干净：…」、`pytest tests -q` → 96 passed / 1 skipped、`dist\Powerful6700-Windows-x64.zip` 47,925,929 B / sha256 `6dd1c13b…` 与 Release 资产一致、`version.py` = 0.3.7。本文 §2 / §10 / §12.4 / §15.2 / §15.4 / §16 按当前真实状态更新（§10 把「pair2×0.60 只在 RAM」那条旧结论改成实测过的「RAM == BACKUP == `b0cab23b…`」，并补上「相机最近一次枚举 0x096F」）。
