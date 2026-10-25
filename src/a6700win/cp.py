@@ -169,8 +169,13 @@ def _cooldown(progress) -> None:
         return
     progress(f"相机正在复位上一个会话，等待 {remaining:.0f} 秒再连…")
     deadline = time.monotonic() + remaining
+    next_tick = remaining - 10.0
     while True:
         left = deadline - time.monotonic()
         if left <= 0:
+            progress("冷却结束，重新连接相机…")
             return
-        time.sleep(min(left, 5.0))
+        if left <= next_tick:
+            progress(f"还要等 {max(1.0, left):.0f} 秒（冷却中，不要拔线）…")
+            next_tick = left - 10.0
+        time.sleep(min(left, 1.0))

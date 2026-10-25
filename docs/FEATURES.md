@@ -115,6 +115,20 @@ CLI：`python tools/looks_apply.py --confirm yes-write`（相机先切到 MSC）
 CLI：`python tools/looknames_apply.py --status`（只读）；写入 `--apply --preset official|zh --confirm yes-write`；
 还原 `--restore --confirm yes-write`。单条记录微调仍用 `tools/uxc_grow.py`。
 
+### 3.3 一次写入：颜色 + 名字（两段会话）
+
+| | |
+| --- | --- |
+| 入口 | 「一次写入：颜色 + 名字」卡片 → **一次写入（颜色 + 名字）** / **一次还原（颜色 + 文字）** |
+| 做什么 | 第一段写四条色度记录（RAM），第二段写语言资源（`/usr` 文件），两段各连一次相机 |
+| 为什么拆 | 实测同一个会话里既写 CP 单元又写 145 KB 文件，第 13 次传输左右端点必掉，文件停在一半；两次会话之间靠冷却（默认 50 秒）兜住 |
+| 时长 | 平均约 2 分钟，其中约 1 分钟是等相机复位；界面会显示「还要等 N 秒」，不需要拔线 |
+| 失败处理 | 颜色段失败 → 整段停下、文字一个字都不动；文字段失败 → 保留已写入的颜色，提示可以只回滚颜色 |
+| 一致性 | 命名方案决定文字，颜色固定是那四条配方；两段都用同一套读回校验 |
+
+CLI：`python tools/bundle_apply.py --apply --preset zh --confirm yes-write`，还原用 `--restore`。
+真机验收待做（本地测试覆盖了顺序、失败分支与报告，未覆盖真实相机）。
+
 ---
 
 ## 四、诊断与自检（不接相机也能跑）
@@ -153,6 +167,7 @@ CLI：`python tools/looknames_apply.py --status`（只读）；写入 `--apply -
 | `tools/look_loop.py` | 以 RAW+JPEG 配对做 12 档色相测量、模拟与求解 |
 | `tools/look_calibrate.py`、`look_diff.py` | 拟合误差统计与两种配方对比 |
 | `tools/looknames_apply.py` | 菜单文字：`--status` 只读、`--apply --preset official\|zh`、`--restore`（写入类要 `--confirm yes-write`） |
+| `tools/bundle_apply.py` | 一次写入 / 还原：颜色 + 菜单文字，两段会话（`--apply` / `--restore`，要 `--confirm yes-write`） |
 | `tools/uxc_grow.py` | 单条 UXC 记录改名（整块后移 + 索引重写），离线预览与真机写入 |
 | `tools/cp_read.py`、`cp_write.py`、`cp_patch.py`、`cp_survey.py` | CP 单元读 / 写 / 批量改 / 19 单元全量普查 |
 | `tools/cp_verify_factory.py`、`restore_units.py` | 与出厂副本逐单元比对、写回出厂值 |

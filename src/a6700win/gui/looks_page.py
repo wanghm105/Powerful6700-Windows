@@ -6,7 +6,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QComboBox, QFileDialog, QGridLayout, QHBoxLayout, QLabel, QPushButton,
                                QVBoxLayout, QWidget)
 
-from .. import cp, looknames, looks as looks_mod
+from .. import bundle, cp, looknames, looks as looks_mod
 from . import theme
 from .pages import Page
 from .widgets import Card, Divider, LogBox, Pill, WrapLabel, reset_layout
@@ -63,6 +63,37 @@ class LooksPage(Page):
         note.setObjectName("Faint")
         self.intro.add(note)
         self.root.addWidget(self.intro)
+
+        # ------------------------------------------------------------ 一次写入
+        self.bundle_card = Card("一次写入：颜色 + 名字", "两段会话、中间自动等相机复位")
+        bundle_note = WrapLabel(
+            "颜色和菜单文字在相机里是两套东西：颜色写在运行内存的 CP 色度单元里，"
+            "菜单文字写在 /usr 语言资源文件里。实测「一次会话里既写 CP 单元又写 145 KB 文件」"
+            "会掉线，所以这里拆成两次连接顺序执行，中间等相机复位（约 1 分钟），"
+            "全程约 2 分钟，中途不要拔线。选一档命名方案点下去，颜色和文字就按同一套对齐。"
+        )
+        bundle_note.setObjectName("Muted")
+        self.bundle_card.add(bundle_note)
+        bundle_row = QHBoxLayout()
+        bundle_row.setSpacing(8)
+        caption = QLabel("将写入")
+        caption.setObjectName("Faint")
+        bundle_row.addWidget(caption)
+        self.bundle_preset_label = QLabel("")
+        bundle_row.addWidget(self.bundle_preset_label)
+        bundle_row.addStretch(1)
+        self.bundle_restore_button = QPushButton("一次还原（颜色 + 文字）")
+        self.bundle_restore_button.setObjectName("Ghost")
+        self.bundle_restore_button.setToolTip("先把颜色写回出厂记录，再把语言资源写回基线；两段各连一次相机。")
+        self.bundle_restore_button.clicked.connect(self._bundle_restore)
+        bundle_row.addWidget(self.bundle_restore_button)
+        self.bundle_apply_button = QPushButton("一次写入（颜色 + 名字）")
+        self.bundle_apply_button.setObjectName("Primary")
+        self.bundle_apply_button.setToolTip("颜色按四条配方写、菜单文字按当前命名方案写，分两次连接，约 2 分钟。")
+        self.bundle_apply_button.clicked.connect(self._bundle_apply)
+        bundle_row.addWidget(self.bundle_apply_button)
+        self.bundle_card.add_layout(bundle_row)
+        self.root.addWidget(self.bundle_card)
 
         self.restore_card = Card("能不能无损还原")
         verdict = WrapLabel("能：四条颜色记录逐字节写回出厂值，不留下任何固件改动。")
@@ -287,6 +318,9 @@ class LooksPage(Page):
     def _sync_preset_hint(self) -> None:
         meta = looknames.PRESETS.get(self.names_preset) or {}
         self.preset_hint.setText(str(meta.get("note") or ""))
+        if hasattr(self, "bundle_preset_label"):
+            self.bundle_preset_label.setText(
+                f"颜色四条配方 + 菜单文字「{meta.get('label') or self.names_preset}」")
 
     def _preset_changed(self, _index: int) -> None:
         key = str(self.names_preset_box.currentData() or looknames.DEFAULT_PRESET)
@@ -340,12 +374,17 @@ class LooksPage(Page):
         self._render_names()
         enabled = not busy and not simulation
         for button in (self.apply_button, self.restore_button, self.detect_button,
-                       self.names_apply_button, self.names_restore_button, self.names_import_button):
+                       self.names_apply_button, self.names_restore_button, self.names_import_button,
+                       self.bundle_apply_button, self.bundle_restore_button):
             button.setEnabled(enabled)
         if simulation:
             hint = "演示模式下不会接触相机，请用真实设备模式。"
         else:
             hint = "需要相机处于 USB 存储（MSC）模式。"
+        self.bundle_apply_button.setToolTip(
+            hint if simulation else "颜色按四条配方写、菜单文字按当前命名方案写；两次连接，约 2 分钟。")
+        self.bundle_restore_button.setToolTip(
+            hint if simulation else "颜色写回出厂记录、语言资源写回基线；两次连接，约 2 分钟。")
         self.apply_button.setToolTip(hint if simulation else "写入四条色度记录并回读校验。")
         self.restore_button.setToolTip(hint if simulation else "把这四条记录还回出厂值，其它记录不动。")
         self.detect_button.setToolTip(hint if simulation else "只读读取，不改任何东西。")
@@ -507,6 +546,59 @@ class LooksPage(Page):
             self.log.log("四条记录已经是出厂状态，本次没有写入。")
         else:
             self.log.log("四条记录已经是目标状态，本次没有写入。")
+        self._detect()
+
+    def _bundle_apply(self) -> None:
+        self._release_controller_session()
+        preset = self.names_preset
+        label = (looknames.PRESETS.get(preset) or {}).get("label", preset)
+        self.log.log(f"一次写入：颜色 + 菜单文字（{label}）。分两次连接，中间会等相机复位，"
+                     "大约 2 分钟，中途不要拔线。")
+        self.app.run_task("一次写入（颜色 + 名字）",
+                          lambda progress: bundle.apply(progress, preset=preset),
+                          lambda report: self._bundle_done(report, restoring=False))
+
+    def _bundle_restore(self) -> None:
+        self._release_controller_session()
+        preset = self.names_preset
+        self.log.log("一次还原：颜色 + 菜单文字。同样分两次连接，中间会等相机复位。")
+        self.app.run_task("一次还原（颜色 + 文字）",
+                          lambda progress: bundle.restore(progress, preset=preset),
+                          lambda report: self._bundle_done(report, restoring=True))
+
+    def _bundle_done(self, report, restoring: bool = False) -> None:
+        report = report or {}
+        colors = report.get("colors")
+        if colors is not None:
+            self.app.looks_state = colors
+            rows = colors.get("looks") or []
+            if rows:
+                parts = [f"{row.get('name')}={STATE_TEXT.get(str(row.get('state')), ('未知',))[0]}"
+                         for row in rows]
+                self.log.log("颜色结果：" + "，".join(parts))
+        if report.get("names"):
+            self.names_report = report.get("names")
+            self.names_error = None
+        if report.get("error"):
+            self.log.log(f"停在这里：{report['error']}")
+        names = report.get("names")
+        if names:
+            preset = (looknames.PRESETS.get(str(names.get("preset") or "")) or {}).get("label")
+            if preset:
+                self.log.log(f"菜单文字按「{preset}」写入完成。")
+            for change in (names.get("changes") or [])[:8]:
+                self.log.log(f"  0x{change['rid']:08x}：{change['old']!r} → {change['new']!r}")
+        if not report.get("error"):
+            if report.get("wrote"):
+                if restoring:
+                    self.log.log("两段都已回读通过：颜色和文字都回到出厂状态。"
+                                 "颜色要等正常关机再开机才写进 BACKUP.BIN。")
+                else:
+                    self.log.log("两段都已回读通过。颜色要正常关机再开机才写进 BACKUP.BIN；"
+                                 "菜单文字退出 USB 后开机就能看到。")
+            else:
+                self.log.log("两段内容都已是目标状态，本次没有写入。")
+        self.app.refresh()
         self._detect()
 
     def _apply_names(self) -> None:

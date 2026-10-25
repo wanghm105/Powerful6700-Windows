@@ -3,10 +3,11 @@
 ## 已在本机验证（无相机）
 
 - `.venv`（Python 3.12.3）里 `import usb / libusb_package / PySide6 / PyInstaller` 全部可用；
-- `pytest tests -q` → **86 passed / 1 skipped**（SetupAPI 解析与枚举、wdi 参数与白名单、补丁幂等与
+- `pytest tests -q` → **93 passed / 1 skipped**（SetupAPI 解析与枚举、wdi 参数与白名单、补丁幂等与
   载荷严格性、Windows 兼容层的设备锁/独占保存/二进制写/异常放锁、结构守卫的时间戳豁免与
   **写入目标回填**、恢复预约/写前拒绝分类、载荷错误文案、驱动页门闸、外观页会话释放、六个页面无头渲染、
-  **UXC 语言资源的就地改名/整块后移/幂等，以及菜单文字写入与三档还原的假设备回归**）；
+  **UXC 语言资源的就地改名/整块后移/幂等，以及菜单文字写入与三档还原的假设备回归**、
+  **一次写入的两段顺序与两段各自的失败分支**）；
 - `--offline-self-test`（源码运行）：python / platform / vendor / files / data-dir / libusb / setupapi /
   controller 全 OK，wdi 因未下载而 SKIP；
 - `build_controller('physical') + check_environment()` → `environment.ready = True`，
@@ -49,12 +50,13 @@
 
 以下仍没在真机上验证过，不要当作可用性承诺：
 
-1. **失败回滚**（`rolled-back` / `recovery-required`）与写入中断（拔线、相机睡眠）时的行为；
-2. **功能状态恢复**（`.a6700backup` 写回、只写回清单字段的稀疏恢复）从未执行过；
-3. `0x047D` 这一初始 PID（MSC 的另一种枚举）未验证，本机只见到 `0x0E76`；
-4. 多台索尼设备同时连接时的唯一性报错路径；
-5. 提权失败、非管理员启动时的 Windows 提示链路（目前只验证了管理员路径）；
-6. macOS / Linux 行为（本端口只为 Windows 增加适配，未回归原平台）。
+1. **一次写入 / 一次还原的真实流程**（0.3.5 颜色 + 名字，两段会话；本地只验了编排）；
+2. **失败回滚**（`rolled-back` / `recovery-required`）与写入中断（拔线、相机睡眠）时的行为；
+3. **功能状态恢复**（`.a6700backup` 写回、只写回清单字段的稀疏恢复）从未执行过；
+4. `0x047D` 这一初始 PID（MSC 的另一种枚举）未验证，本机只见到 `0x0E76`；
+5. 多台索尼设备同时连接时的唯一性报错路径；
+6. 提权失败、非管理员启动时的 Windows 提示链路（目前只验证了管理员路径）；
+7. macOS / Linux 行为（本端口只为 Windows 增加适配，未回归原平台）。
 
 ## 复现顺序
 
@@ -171,6 +173,24 @@ USB 数据（`request()` 在 `backend.write()` 内部、发 USB 之前抛错）�
 - 重做一次：写内存出厂值 → **正常关机等 7 分钟再开机** → 内存与 BACKUP 两处都是 `72d3da86…`，
   整单元 0 字节差异。→ 落盘发生在关机流程里且需要时间，**等满 1 分钟是必要条件**，
   断电或立刻开机会丢。界面与文档都按这个措辞写。
+
+## 一次写入（颜色 + 名字）：本地编排回归（0.3.5，真机未跑）
+
+`tests/test_bundle.py`（7 个用例，假实现替掉 `looks` / `looknames`，不接触相机）：
+
+- 顺序：`bundle.apply()` 先调 `looks.apply` 再调 `looknames.apply`，**是两次独立调用**（对应两次 USB 会话），
+  报告的 `steps` 为 `["colors", "names"]`；
+- 预设：不传 `preset` 时用 `looknames.load_preset()`，并原样传给菜单文字那一段；
+- 还原：`bundle.restore()` 走 `looks.restore` + `looknames.restore`；
+- 颜色段失败 → 抛 `BundleError`，文案含「菜单文字一个字都没动」，且 `looknames.apply` 未被调用；
+- 文字段失败 → 不抛，`report["steps"] == ["colors"]`、`wrote=True`、`error` 里写明
+  「颜色已经写进相机了…可以单独点『还原本页外观』回滚」；
+- `bundle.summary()` 两段都有结果时给「颜色：CC=已写入」与「菜单文字：改了 1 条记录（官方原名）」，
+  只有颜色时不出现菜单文字行。
+
+真机上还要验的四条（顺序同上）：① 一次写入后关机重启，颜色与名字都要对；② 再点一次同一按钮应报
+「已是目标状态，没有写入」；③ 一次还原后颜色回 `72d3da86…`、文字回 145,612 / `fe263360…`；
+④ 中途拔线应停在可解释的失败上（文字段失败要保留颜色并提示单独回滚）。
 
 ## 菜单文字：离线回归（0.3.3 之前）
 

@@ -43,7 +43,8 @@
 ## 2. 一句话现状
 
 **主链路全部真机打通**：只读检查、功能解锁关闭、功能状态备份还原、CP 外观色度写入与逐字节还原、菜单文字改写与还原（英文名 / 中文名两套，都验过）。
-**当前正在做**：外观颜色对 A7C2 直出的**定量拟合**——卡在两点：① 蓝端压不下去（旋钮在矩阵单元，未标定）；② 「名字+颜色一键写」还没做成产品功能（技术上必须拆两个会话）。
+**0.3.5 这一版新做了「一次写入（颜色 + 名字）」**：颜色与菜单文字按同一套选择一起写下去，编排上是两段独立会话 + 冷却，界面和 CLI 都进去了（`src/a6700win/bundle.py`、`tools/bundle_apply.py`），**代码与本地测试完成，真实相机上还没跑过**。
+**仍在做的**：外观颜色对 A7C2 直出的**定量拟合**——蓝端压不下去（旋钮在矩阵单元 `0x02A4000D` block 4，未标定），CC 定稿强度也还要用实拍确认（当前 RAM 是 pair2×0.60 + pair6=0，离线 RMS 0.164）。
 
 ---
 
@@ -88,7 +89,7 @@ $env:POWERFUL6700_DATA='<repo>\.data'
 ### 3.4 测试与构建
 
 ```powershell
-# 测试（最近一次：86 passed / 1 skipped）
+# 测试（最近一次：93 passed / 1 skipped）
 .\.venv\Scripts\python.exe -m pytest tests -q
 
 # 打包（内部先 pytest，再 PyInstaller，再 --offline-self-test）
@@ -113,6 +114,7 @@ powershell -ExecutionPolicy Bypass -File packaging\build.ps1
 | 功能状态备份 / 恢复 | GUI 功能管理 | 备份文件 SHA-256 记录在案；恢复曾需两个补丁（隐藏门闸 + 选择面扩到全部） |
 | CP 外观色度写入 / 逐字节还原 | GUI 自定义外观 / `tools/looks_apply.py` | 回读一致 + `/setting/BACKUP.BIN` 三方比对 |
 | 菜单文字改写 / 还原（official / zh 两套） | GUI 自定义外观 → 菜单文字卡片 | 英文名 145,708 B、中文名 145,692 B 都在相机菜单里显示正确；还原回出厂 145,612 B |
+| 一次写入 / 一次还原（颜色 + 名字） | GUI 自定义外观 → 「一次写入：颜色 + 名字」/ `tools/bundle_apply.py` | **代码与本地测试完成，真机未跑**（`tests/test_bundle.py` 覆盖顺序、两段会话、失败分支与报告） |
 | 写 `/usr` 文件 | `src/a6700win/flash.py` + `native/flash_write.elf` | 已真机写、断电持久 |
 | 写 `/cp`、`/setting` 文件 | 同上（`WRITABLE_ROOTS`） | 代码已完成并重编，**`/setting` 分支尚未真机跑过** |
 | 载荷自检 / 零变化写探测 | `tools/flash_write.py --probe` | 通过 |
@@ -329,6 +331,22 @@ RMS = √(mean((s·m − t)²))      # 逐档误差
   ```
 - 恢复手法（掉线撕裂时）：`live_repair.py` 只重写差异块（先读全 5 块 → 逐块比 → 只写不同的块 → 只回读这些块）
 
+### 9.5 一次写入（颜色 + 名字，0.3.5）
+
+用户要求（m09376）：软件里的选择必须成对生效——「选中文富士就写中文名 + 富士滤镜」。
+这不是新协议，只是把两件已验过的事按顺序排好：
+
+```python
+# src/a6700win/bundle.py
+colors_wrote = _colors(progress, report, restoring)   # looks.apply / looks.restore（会话 1）
+_names(progress, report, restoring, colors_wrote)     # looknames.apply / looknames.restore（会话 2）
+```
+
+- 两段各自 `cp.session`，**中间的空档由 `cp._cooldown` 兜**（`SESSION_GAP` 默认 50 s，进度条每 10 s 报一次，末尾报「冷却结束，重新连接相机…」）。
+- 前一段失败 → `BundleError` 直接抛出，文字一个字都不动；后一段失败 → 不抛，写进 `report["error"]`，并说明颜色已写入、可单独回滚（GUI 显示「停在这里：…」，CLI 退出码 1）。
+- 报告结构：`{preset, label, steps, colors, names, wrote, error, seconds}`；`bundle.summary()` 负责把两段压成人话（GUI 与 CLI 共用）。
+- 真机验收要点（还没做）：① 一次写入后关机重启，颜色与名字都要对；② 二次点同一个按钮应报「已是目标状态，没有写入」；③ 一次还原后颜色回 `72d3da86…`、文字回 145,612 / `fe263360…`；④ 中途拔线应停在第 4 条那种可解释的失败上。
+
 ---
 
 ## 10. 当前真机状态（接手先复核）
@@ -394,19 +412,20 @@ RMS = √(mean((s·m − t)²))      # 逐档误差
 ```
 把 0.164 从「历史最优」变成「当前实测」；同一场景重拍还能对比 0.52 / 0.60 / 0.70 / 0.85。
 
-### 12.3 一键写入（优先级 3，产品级要求）
+### 12.3 一键写入（0.3.5 已实现，待真机验收）
 用户原话（m09376）：「软件里的所有更改都要对应，比如我要中文的富士或者英语版的富士滤镜，就要写入富士滤镜和对应名字」。
-实现约束：
-- **必须两个连续会话**：会话 1 写 CP 色度 → 冷却 50–60 s → 会话 2 写文字文件
-- 界面要讲明白：约 2 分钟、中途不要拔线、失败要**取电池等 1 分钟**再试
-- 语义：颜色按外观（CC/NC/PF/NF）写；文字按命名方案（official/zh）写；两者都不能只写一半
-- 还原同理：颜色回出厂记录、文字回基线（或短名回写），也要拆两个会话
+代码已完成：`src/a6700win/bundle.py`（`apply` / `restore` / `summary`）+ GUI 的「一次写入：颜色 + 名字」卡片 + `tools/bundle_apply.py`。约束都照实落进去了：
+- 两段连续会话（会话 1 写 CP 色度 → 冷却 50–60 s → 会话 2 写文字文件），不合并成一个会话
+- 界面写明约 2 分钟、中途不要拔线；冷却期间进度条报剩余秒数
+- 失败分支：颜色段失败不动文字；文字段失败保留颜色并提示可单独回滚
+- 还原同理：颜色回出厂记录、文字回基线（或短名回写），也拆两段
 
-### 12.4 版本与发布（优先级 4）
-- `src/a6700win/version.py` 仍是 `0.3.3` → 升 `0.3.4`
-- `packaging\build.ps1` 重建 → seed 基线库 → `--offline-self-test` 九项
-- 文档收尾：`docs/LOOKS.md` §7.1、`docs/RELEASE-NOTES.md` 补两套命名与本次真机结论
-- git 提交；Release 资产上传等用户授权
+验收清单见 §9.5 末尾四条；跑完把结果补进 `docs/VALIDATION.md`。
+
+### 12.4 版本与发布
+- `src/a6700win/version.py` 已是 `0.3.5`（0.3.4 已发 Release `v0.3.4-win.1`）
+- `packaging\build.ps1` 重建 → seed 基线库 → `--offline-self-test` 九项 → `--render-pages` 七页
+- 0.3.5 的 Release 资产（zip）等用户点头再传
 
 ---
 
@@ -456,10 +475,11 @@ RMS = √(mean((s·m − t)²))      # 逐档误差
 | `looks.py` | CP 色度配方（`profile` / `read_state` / `apply` / `restore`，均支持 `channel=`） |
 | `uxc.py` | UXC v7 格式（`decode` / `patch_text` / `grow` / `rename_all` / `texts`） |
 | `looknames.py` | 菜单文字（`PRESETS` / `targets` / `read` / `apply` / `restore` / `capture` / `auto_import` / `_write_blob`） |
+| `bundle.py` | 一次写入 / 还原（颜色 + 名字）：两段会话编排、部分失败的报告、`summary()` 人话摘要 |
 | `app.py` / `controller.py` | 状态机与主控 |
 | `selftest.py` | 离线自检九项 |
 | `gui/` | `window` / `pages` / `render`（`settle()` 处理 `deleteLater`）/ `looks_page` 等 |
-| `version.py` | `APP_NAME="Powerful6700Win"`、`APP_TITLE="Powerful6700 · Windows"`、`APP_VERSION="0.3.3"` |
+| `version.py` | `APP_NAME="Powerful6700Win"`、`APP_TITLE="Powerful6700 · Windows"`、`APP_VERSION="0.3.5"` |
 
 ### 15.2 工具（`tools/`）
 
@@ -469,6 +489,7 @@ RMS = √(mean((s·m − t)²))      # 逐档误差
 | `look_loop.py` | `pairs` / `measure`（`--raw <ARW> --jpeg <jpg>`）/ `simulate` / `solve` |
 | `look_diff.py` / `look_calibrate.py` | 差异与标定 |
 | `looks_apply.py` | 按配方一次性写四条 |
+| `bundle_apply.py` | 一次写入 / 还原（颜色 + 菜单文字），两段会话；`--apply` / `--restore` / `--preset` / `--confirm yes-write` |
 | `cp_read.py` / `cp_write.py` / `cp_patch.py` / `cp_probe_unit.py` | CP 单元读写与探测（写前自动存 `<file>.orig`） |
 | `cp_verify_factory.py` | 14 个单元与出厂副本比对（**直接 `run_authentication`，无冷却/无锁**） |
 | `uxc_grow.py` | 菜单文字改名（离线预览 / 真机写） |
@@ -501,19 +522,17 @@ RMS = √(mean((s·m − t)²))      # 逐档误差
 
 ## 16. 未提交改动
 
+0.3.5 这一批（提交后本行即为空，`git status --short` 只剩 `.data/` 与 `dist/` 的忽略项）：
+
 ```
- M README.md                                M docs/RELEASE-NOTES.md
- M docs/ARCHITECTURE.md                     M docs/VALIDATION.md
- M docs/CC-CN-PLAYBOOK.md                   M docs/looks-profile.json
- M docs/LOOK-COLOR.md                       M native/flash_manifest.json
- M docs/LOOKS.md                            M native/flash_write.c
-                                            M native/flash_write.elf
- M src/a6700win/cp.py                       M src/a6700win/flash.py
- M src/a6700win/gui/looks_page.py           M src/a6700win/looks.py
- M src/a6700win/version.py
-?? docs/AI-HANDOFF.md  ?? docs/CALIBRATION.md
-?? src/a6700win/looknames.py  ?? src/a6700win/uxc.py
-?? tests/test_looknames.py
+ M README.md                        # 自定义外观节补一次写入；功能状态表该行打勾
+ M docs/AI-HANDOFF.md               # 本文（§2 / §3.4 / §4 / §9.5 / §12.3 / §15 / §17）
+ M docs/FEATURES.md                 # 新增 3.3 一次写入；工具表补 bundle_apply.py
+ M src/a6700win/cp.py               # 冷却进度每 10 秒报一次，末尾报「冷却结束，重新连接相机…」
+ M src/a6700win/gui/looks_page.py   # 「一次写入：颜色 + 名字」卡片与两个按钮 + 结果日志
+?? src/a6700win/bundle.py           # 两段会话编排、部分失败报告、summary()
+?? tests/test_bundle.py             # 7 个用例：顺序 / 兜底预设 / 还原 / 两段失败 / 摘要
+?? tools/bundle_apply.py            # 命令行入口
 ```
 
 ---
@@ -524,3 +543,4 @@ RMS = √(mean((s·m − t)²))      # 逐档误差
 - **2026-10-25 17:55** · 扩写成完整交接：补 §1 项目背景、§5 Windows 路线与 PID 表、§6 协议/挂载/载荷细节、§7 单元布局与持久化语义、§9 UXC 格式与 rid 全表、§13 能力边界、§14 历史调查结论（LUT/cube/cpapp/卡速）、§15 文件地图。
 - **2026-10-25 18:2x** · 查「只读检查 状态：04000010」：从源码复现不出来（三步探针全 OK，同会话连读 3 次 + 闲置 90 s 再读全 OK，GUI 全路径 headless 跑通得到「预计修改 0 字节」）。判断是一次性设备侧拒绝，与同日多次掉线同源。0.3.4 只做「下次能看懂」：`_windows_backend_file` 报出是哪一步（`配置写入（SET_FILE2）` / `载荷写入（SET_FILE）`）、file_id、状态字含义与恢复步骤（拔线 → 关机 → 取电池 1 分钟 → 装回 → 重连 MSC）。诊断脚本：`.data/scratch/live_inspect_steps.py`、`live_session_reuse.py`、`live_gui_inspect.py`、`live_inspect_plan.py`。同时版本 0.3.3 → 0.3.4（两套命名 + `/setting/` 白名单 + 状态码可读化）。
 - **2026-10-25 18:5x** · 0.3.4 发布（Release `v0.3.4-win.1`，zip 45.7 MB / sha256 `93761bfc…`）+ README 顶部「功能状态」表与 `docs/PROGRESS.md`。随后用户要求「按开发进度表写下现有功能」→ 新增 **`docs/FEATURES.md`**（七节：机身功能 / 连接与驱动 / 外观与菜单文字 / 诊断自检 / 数据目录 / 命令行工具 / 明确没有的能力），并补一个真正的 CLI `tools/looknames_apply.py`（`--status` / `--apply --preset official|zh` / `--restore`，写入要 `--confirm yes-write`），README 的目录、功能明细、文档表三处加上 FEATURES.md 入口。`looknames._rows()` 现在把 profile 的 `label` 也带进报告，CLI 能显示「PT（人像）」。真机 `--status` 实测：145,708 / `9fd0bb49…` / renamed / 四条 installed / 基线 factory 145,612（8 份）。`pytest tests -q` → 86 passed / 1 skipped。
+- **2026-10-25 19:0x** · 用户 m10336「颜色和名字一次写入继续做」→ 新增 **`src/a6700win/bundle.py`**（两段会话编排 `apply` / `restore`、部分失败报告、`summary()`）、GUI「一次写入：颜色 + 名字」卡片（两按钮 + 结果日志 + 预设联动）、CLI `tools/bundle_apply.py`、`tests/test_bundle.py` 7 个用例；`cp._cooldown` 改成每 10 秒报剩余秒数、末尾报「冷却结束，重新连接相机…」。版本 0.3.4 → **0.3.5**。`pytest tests -q` → **93 passed / 1 skipped**。README / FEATURES / 本文同步；真机验收未做（清单在 §9.5）。
