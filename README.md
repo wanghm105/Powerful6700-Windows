@@ -107,13 +107,9 @@ python tools/looks_apply.py --confirm yes-write   # 相机先切到 USB 存储�
 
 ## 这个项目和上游是什么关系
 
-上游 [xyzhangxin/sony-a6700-powerful](https://github.com/xyzhangxin/sony-a6700-powerful) 是个 macOS 项目。这个仓库把它搬到 Windows，再把桌面端缺的那部分补上。
+就是上游 [xyzhangxin/sony-a6700-powerful](https://github.com/xyzhangxin/sony-a6700-powerful) 的 Windows 版。上游是 macOS 项目，干活的逻辑没改；然后在此基础上继续开发而成。
 
-真正干活的逻辑是上游的：哪些字节对应哪个功能、写进去之后怎么核对、失败了怎么回滚。这部分我没改。Windows 这边的连接、界面和打包是我写的，接的方式是在上游启动时挂上改动，不动它的源码，所以上游发新版本时整个目录换掉再对一次就行。
-
-搬过来最麻烦的是驱动。相机在 Windows 上不是插上就能说话，得先把它绑到系统自带的通用驱动上，这一步要管理员权限；绑好之后资源管理器里的相机盘会消失，这是正常的。另外相机的「服务模式」在这种系统上一开始没有任何驱动，程序会自己发现它、补装一次。
-
-顺手也给上游报了两个问题：一个是等待时失败会把相机留在服务模式，一个是仓库里记的校验值和源码对不上。记在 [docs/UPSTREAM-NOTES.md](docs/UPSTREAM-NOTES.md)。
+许可证跟上游一样，GPL-3.0-only。顺手给上游报过两个问题，记在 [docs/UPSTREAM-NOTES.md](docs/UPSTREAM-NOTES.md)：等待时失败会把相机留在服务模式；仓库里记的校验值和源码对不上。
 
 ## 下载与系统要求
 

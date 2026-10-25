@@ -1,6 +1,17 @@
-# Powerful6700 · Windows 0.3.6-win.1
+# Powerful6700 · Windows 0.3.7-win.1
 
 Sony A6700 工具 [Powerful6700](https://github.com/xyzhangxin/sony-a6700-powerful)（上游 0.2.0，GPL-3.0）的 Windows 端实现。
+
+## 0.3.7：只读检查碰到「配置写入被拒」会自己清一遍再试
+
+上一版界面里点只读检查，有时会停在「文件写入或载荷执行失败，状态：04000010」（= `0x10000004`）。原因不是报文写错，而是上一次会话没干净结束时，`/tmp/jiritsu/` 里留下的临时文件让相机拒绝下一次配置写入。
+
+- 写入前多一步自愈：配置写入（`SET_FILE2`，命令 `0x4010`）返回 `0x10000004` 时，先清掉 `/tmp/jiritsu/tmmc.jit` 与 `/tmp/jiritsu/tmmc.dat`，再发一次；成功就继续，失败才报错，并且报错里写明是「配置写入」还是「载荷写入」以及恢复步骤。
+- 清理用的是相机自己的删除命令：**先 select 目标路径，再发 `CMD_REMOVE`（18）且正文只有 `\0\xff`**。直接把路径塞进 `CMD_REMOVE` 会被拒成 `0x10000201`（真机实测）。
+- 每个相机会话说起来时也顺手清一次（`cp.session` 认证后），少踩同一条坑。
+- 新增隐藏参数 `--inspect-once`：在命令行跑一次与界面完全相同的只读检查路径（controller → reserve → run_reserved），结果落 JSON。冻结包里也能用，排障时不用手点界面。
+- 真机复验：删除命令返回成功；随后同会话整份只读读取 `260 块 / 133,120 字节`；`--inspect-once` 输出 `status: inspected`、`compatible: true`、`write_attempted: false`。
+- 测试 `pytest tests -q` → 96 passed / 1 skipped（新增 `tests/test_config_selfheal.py` 3 个用例）。
 
 ## 0.3.6：写入改成一帧发完，并记下「一次上电只给一个服务会话」
 

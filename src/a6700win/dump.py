@@ -17,6 +17,9 @@ import time
 from pathlib import Path
 
 JIRITSU_DIR = "/tmp/jiritsu/"
+# Senser 的文件传输（0x4010 配置写入）和我们自己的载荷共用这两个名字：
+# 上一次会话没干净结束时它们会留在相机里，导致下一次配置写入被拒（0x10000004）。
+TEMP_PATHS = ("/tmp/jiritsu/tmmc.jit", "/tmp/jiritsu/tmmc.dat")
 CMD_SELECT = 15
 CMD_WRITE = 16
 CMD_READ = 17
@@ -111,6 +114,21 @@ def read_file(channel, path: str, missing: bool = False):
     """读整个文件（A7C2 的做法）。大文件请改用 read_range。"""
     select(channel, path)
     return jiritsu(channel, CMD_READ, b"\0\xff\0", missing)
+
+
+def remove(channel, path: str, missing: bool = True) -> bool:
+    """删除 /tmp/jiritsu 下的临时文件；文件本来不在就算成功。
+
+    Senser 的文件传输（0x4010 配置写入）与我们的载荷共用 /tmp/jiritsu/tmmc.jit
+    这条约定，上一次会话没干净结束时它会留在那里，下一次配置写入就会被相机拒绝
+    （状态 0x10000004）。写之前清一遍能避免这种连锁失败。
+
+    报文与 A7C2 一致（refs/a7c2-fl23 src/camera_runtime/transport.py:417-420）：
+    先 select 目标路径，再发 CMD_REMOVE 且正文只有 b"\\0\\xff"。
+    路径直接塞进 CMD_REMOVE 会被相机拒成 0x10000201。
+    """
+    select(channel, path)
+    return jiritsu(channel, CMD_REMOVE, b"\0\xff", missing=missing) is not None
 
 
 def camera_file(channel, absolute_path: str, missing: bool = False):

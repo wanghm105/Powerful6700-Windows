@@ -52,6 +52,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--bytes", type=int, metavar="N", help=argparse.SUPPRESS)
     parser.add_argument("--offset", type=int, default=0, metavar="N", help=argparse.SUPPRESS)
     parser.add_argument("--chunk", type=int, default=None, metavar="N", help=argparse.SUPPRESS)
+    parser.add_argument("--inspect-once", action="store_true", help=argparse.SUPPRESS)
     return parser
 
 
@@ -104,6 +105,11 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0
+
+    if args.inspect_once:
+        from . import inspect_once
+
+        return inspect_once.main([args.json] if args.json else [])
 
     if args.diagnose:
         from . import patches

@@ -43,7 +43,7 @@
 ## 2. 一句话现状
 
 **主链路全部真机打通**：只读检查、功能解锁关闭、功能状态备份还原、CP 外观色度写入与逐字节还原、菜单文字改写与还原（英文名 / 中文名两套，都验过）。
-**0.3.6 这一版把写入链路改成「一帧发完」，并记下了一条真机结论：相机可能进入「一次上电只给一个服务会话」**——0.3.5 的一次写入在这个状态下第二段必失败，绕开办法是把动作压进单个会话，彻底恢复要拔线 + 关机 + 取电池 1 分钟。颜色 + 名字的一次写入本身（`src/a6700win/bundle.py`、`tools/bundle_apply.py`，两段会话 + 冷却）界面与 CLI 都已就位，但走完整流程的真机验收还没做过；颜色与文字两条链路已分别用单会话在真机跑通。
+**0.3.7 给只读检查加了自愈：相机回 `0x10000004`（界面上的「状态：04000010」）时，先清 `/tmp/jiritsu` 残留再发一次配置写入**；0.3.6 把写入链路改成「一帧发完」，并记下了一条真机结论：相机可能进入「一次上电只给一个服务会话」——0.3.5 的一次写入在这个状态下第二段必失败，绕开办法是把动作压进单个会话，彻底恢复要拔线 + 关机 + 取电池 1 分钟。颜色 + 名字的一次写入本身（`src/a6700win/bundle.py`、`tools/bundle_apply.py`，两段会话 + 冷却）界面与 CLI 都已就位，但走完整流程的真机验收还没做过；颜色与文字两条链路已分别用单会话在真机跑通。
 **仍在做的**：外观颜色对 A7C2 直出的**定量拟合**——蓝端压不下去（旋钮在矩阵单元 `0x02A4000D` block 4，未标定），CC 定稿强度也还要用实拍确认（当前 RAM 是 pair2×0.60 + pair6=0，离线 RMS 0.164）。
 
 ---
@@ -89,7 +89,7 @@ $env:POWERFUL6700_DATA='<repo>\.data'
 ### 3.4 测试与构建
 
 ```powershell
-# 测试（最近一次：93 passed / 1 skipped）
+# 测试（最近一次：96 passed / 1 skipped）
 .\.venv\Scripts\python.exe -m pytest tests -q
 
 # 打包（内部先 pytest，再 PyInstaller，再 --offline-self-test）
@@ -373,27 +373,28 @@ _names(progress, report, restoring, colors_wrote)     # looknames.apply / lookna
 
 ## 11. 踩过的坑（照抄，别重犯）
 
-### 11.1 会话与掉线（最贵的三条）
+### 11.1 会话与掉线（最贵的五条）
 1. **同一会话混写 CP 单元 + 145 KB 文件 → 必掉线**；拆两个会话 + 冷却 **50–60 s**（`cp.SESSION_GAP`，环境变量 `POWERFUL6700_SESSION_GAP`）。
-2. **2026-10-25 实测：相机可能进入「一次上电只给一个服务会话」的状态**。表现是第一个会话正常（认证、读写都通），结束后相机在 `0x0336` / `0x096F` / `0x0E76` 之间来回跳几下再回到 MSC；此后再连，第二个认证包写 `0x0336` 的 bulk 端点立刻 `[Errno 32] Pipe error`，等 60 s 也不恢复，只有**取电池断电重开**才恢复。所以排查/修复时要把动作压进**单个会话**（读状态 → 写 → 回读都在一个会话里）。
-3. **掉线后普通「关机再开」无效**：要拔线 + 关机 + **取电池约 1 分钟**（A7C2 文档原话：只关机再开机不算断电重开），否则第一个块就崩。
-4. **USB 3 高速口时相机不进服务模式**（认证后跳回放画面、`0x0336` 不出现）→ 换 USB 2.0 口/线。端点坏掉的唯一恢复是**物理拔插**。
+2. **`/tmp/jiritsu` 的残留会让下一次配置写入被拒（`0x10000004`）**。0x4010 配置写入与我们的载荷共用 `tmmc.jit` / `tmmc.dat`，上一次会话没干净结束时残留会连锁到下一次。清理用相机自己的删除命令，报文必须「先 select 目标路径，再发 `CMD_REMOVE`（18）且正文只有 `\0\xff`」——把路径直接塞进 `CMD_REMOVE` 会被拒成 `0x10000201`。0.3.7 已做成自愈：`patches._windows_backend_file` 重试一次，`cp._clear_temp` 在会话开头清一次。
+3. **2026-10-25 实测：相机可能进入「一次上电只给一个服务会话」的状态**。表现是第一个会话正常（认证、读写都通），结束后相机在 `0x0336` / `0x096F` / `0x0E76` 之间来回跳几下再回到 MSC；此后再连，第二个认证包写 `0x0336` 的 bulk 端点立刻 `[Errno 32] Pipe error`，等 60 s 也不恢复，只有**取电池断电重开**才恢复。所以排查/修复时要把动作压进**单个会话**（读状态 → 写 → 回读都在一个会话里）。
+4. **掉线后普通「关机再开」无效**：要拔线 + 关机 + **取电池约 1 分钟**（A7C2 文档原话：只关机再开机不算断电重开），否则第一个块就崩。
+5. **USB 3 高速口时相机不进服务模式**（认证后跳回放画面、`0x0336` 不出现）→ 换 USB 2.0 口/线。端点坏掉的唯一恢复是**物理拔插**。
 
 ### 11.2 写入器
-4. 先 `truncate` 再写：grow 场景（145,612→145,708）最后一块落在原长度之外 → 状态码 12「范围超出文件长度」。
-5. 加「载荷缓存」或改分包大小 → 读到陈旧数据（`flash.stat` 返回 225 其实是路径字符串长度、`read_range` 返回路径文本）。已回滚，**别再加**。
-6. 回读必须用新的 `O_RDONLY` 句柄，且要 `fsync` + `close` 之后。
+1. 先 `truncate` 再写：grow 场景（145,612→145,708）最后一块落在原长度之外 → 状态码 12「范围超出文件长度」。
+2. 加「载荷缓存」或改分包大小 → 读到陈旧数据（`flash.stat` 返回 225 其实是路径字符串长度、`read_range` 返回路径文本）。已回滚，**别再加**。
+3. 回读必须用新的 `O_RDONLY` 句柄，且要 `fsync` + `close` 之后。
 
 ### 11.3 基线
-7. 整单元写入**必须以当前实时单元为基线**，不能用历史快照（曾把 ST/VV 写黑白）。
-8. `restore()` 的基线来自本地 store；`apply()` 前若无同 sha 基线会自动 capture（事故就是这么救回来的）。
-9. 曾用被污染的「出厂快照」当基线 → 每轮「还原」都写回旧数据；`BASELINE` 一律用 `unit-02a40001.backup-def.bin`。
+1. 整单元写入**必须以当前实时单元为基线**，不能用历史快照（曾把 ST/VV 写黑白）。
+2. `restore()` 的基线来自本地 store；`apply()` 前若无同 sha 基线会自动 capture（事故就是这么救回来的）。
+3. 曾用被污染的「出厂快照」当基线 → 每轮「还原」都写回旧数据；`BASELINE` 一律用 `unit-02a40001.backup-def.bin`。
 
 ### 11.4 环境
-10. GBK 控制台必须 `PYTHONIOENCODING=utf-8`。
-11. 每轮写入结束要让相机退出服务模式（发 `STOP_SENSER`），否则停在 `0x0336`。
-12. bash heredoc 里 `'\\n'` 会被吞成真换行 → 用数值 10 / `chr(10)`；绝对 POSIX 路径要 `MSYS_NO_PATHCONV=1`。
-13. exe 运行时不能删除/改名 `dist` 目录（`base_library.zip` 被占用）。
+1. GBK 控制台必须 `PYTHONIOENCODING=utf-8`。
+2. 每轮写入结束要让相机退出服务模式（发 `STOP_SENSER`），否则停在 `0x0336`。
+3. bash heredoc 里 `'\\n'` 会被吞成真换行 → 用数值 10 / `chr(10)`；绝对 POSIX 路径要 `MSYS_NO_PATHCONV=1`。
+4. exe 运行时不能删除/改名 `dist` 目录（`base_library.zip` 被占用）。
 
 ---
 
@@ -424,7 +425,7 @@ _names(progress, report, restoring, colors_wrote)     # looknames.apply / lookna
 验收清单见 §9.5 末尾四条；跑完把结果补进 `docs/VALIDATION.md`。
 
 ### 12.4 版本与发布
-- `src/a6700win/version.py` 已是 `0.3.6`（0.3.4 已发 Release `v0.3.4-win.1`）
+- `src/a6700win/version.py` 已是 `0.3.7`（0.3.4 已发 Release `v0.3.4-win.1`）
 - `packaging\build.ps1` 重建 → seed 基线库 → `--offline-self-test` 九项 → `--render-pages` 七页
 - 0.3.5 的 Release 资产（zip）等用户点头再传
 
@@ -480,7 +481,7 @@ _names(progress, report, restoring, colors_wrote)     # looknames.apply / lookna
 | `app.py` / `controller.py` | 状态机与主控 |
 | `selftest.py` | 离线自检九项 |
 | `gui/` | `window` / `pages` / `render`（`settle()` 处理 `deleteLater`）/ `looks_page` 等 |
-| `version.py` | `APP_NAME="Powerful6700Win"`、`APP_TITLE="Powerful6700 · Windows"`、`APP_VERSION="0.3.6"` |
+| `version.py` | `APP_NAME="Powerful6700Win"`、`APP_TITLE="Powerful6700 · Windows"`、`APP_VERSION="0.3.7"` |
 
 ### 15.2 工具（`tools/`）
 
@@ -523,7 +524,7 @@ _names(progress, report, restoring, colors_wrote)     # looknames.apply / lookna
 
 ## 16. 未提交改动
 
-暂无。0.3.5（一次写入）与 0.3.6（一帧发完 + 单会话结论）都已提交，`git status --short` 只剩 `.data/` 与 `dist/` 的忽略项。
+0.3.7（配置写入自愈 + `--inspect-once`）本批改动：`src/a6700win/dump.py`、`patches.py`、`cp.py`、`inspect_once.py`（新）、`__main__.py`、`version.py`、`tests/test_config_selfheal.py`（新）、`docs/RELEASE-NOTES.md`、`docs/VALIDATION.md`、`docs/AI-HANDOFF.md`。0.3.5 / 0.3.6 已提交。
 
 ---
 
@@ -535,3 +536,4 @@ _names(progress, report, restoring, colors_wrote)     # looknames.apply / lookna
 - **2026-10-25 18:5x** · 0.3.4 发布（Release `v0.3.4-win.1`，zip 45.7 MB / sha256 `93761bfc…`）+ README 顶部「功能状态」表与 `docs/PROGRESS.md`。随后用户要求「按开发进度表写下现有功能」→ 新增 **`docs/FEATURES.md`**（七节：机身功能 / 连接与驱动 / 外观与菜单文字 / 诊断自检 / 数据目录 / 命令行工具 / 明确没有的能力），并补一个真正的 CLI `tools/looknames_apply.py`（`--status` / `--apply --preset official|zh` / `--restore`，写入要 `--confirm yes-write`），README 的目录、功能明细、文档表三处加上 FEATURES.md 入口。`looknames._rows()` 现在把 profile 的 `label` 也带进报告，CLI 能显示「PT（人像）」。真机 `--status` 实测：145,708 / `9fd0bb49…` / renamed / 四条 installed / 基线 factory 145,612（8 份）。`pytest tests -q` → 86 passed / 1 skipped。
 - **2026-10-25 19:0x** · 用户 m10336「颜色和名字一次写入继续做」→ 新增 **`src/a6700win/bundle.py`**（两段会话编排 `apply` / `restore`、部分失败报告、`summary()`）、GUI「一次写入：颜色 + 名字」卡片（两按钮 + 结果日志 + 预设联动）、CLI `tools/bundle_apply.py`、`tests/test_bundle.py` 7 个用例；`cp._cooldown` 改成每 10 秒报剩余秒数、末尾报「冷却结束，重新连接相机…」。版本 0.3.4 → **0.3.5**。`pytest tests -q` → **93 passed / 1 skipped**。README / FEATURES / 本文同步；真机验收未做（清单在 §9.5）。
 - **2026-10-25 19:4x** · 真机事故收尾：0.3.5 的一次写入把语言资源写成半截（145,692 B，前 131,072 字节新版、尾巴旧版），之后连接一律在认证第一个包挂掉（`[Errno 32] Pipe error`），60 s 冷却无效 → 结论是相机进入了「一次上电只给一个服务会话」，绕开的办法是把动作压进单个会话，彻底恢复要拔线 + 关机 + 取电池 1 分钟。修复与验证：`.data/scratch/repair_oneshot.py official` 单会话内 `truncate` 145,692 → 145,708 + 一帧写完 145,708 字节（约 13 次往返）+ 整份回读，结果 `145708 B 9fd0bb497171 一致` 并登记基线（kind=renamed）→ **145,708 单帧可写，旧笔记的「Jiritsu 64 KiB 上限」被推翻**；随后 `.data/scratch/color_fix.py` 单会话把四条外观颜色写回配方，读回全部「配方在位」，名字仍是英文原名（CC=Classic Chrome / NC=Classic Neg. / PF=Positive Film / NF=Negative Film）。代码：`flash.WRITE_BLOCK = 0x20000`（`BLOCK = 0x8000` 只留给读）、`looknames._write_blob()` 改成 truncate → 分块写（载荷侧 pwrite/fsync/回读）→ 长度复核、`tests/test_flash.py::test_block_limit` 改用 `WRITE_BLOCK + 1`。文档：本文 §11.1 扩成四条、`docs/VALIDATION.md` 新增整节、`docs/FLASH-WRITE.md` 块上限改写、`docs/RELEASE-NOTES.md` 新增 0.3.6 节。版本 0.3.5 → **0.3.6**。`pytest tests -q` → 93 passed / 1 skipped。
+- **2026-10-25 20:0x** · 0.3.6 发布后用户在界面点只读检查，报「配置写入（SET_FILE2）」被拒（`0x10000004`）。这次定位到机理：`0x4010` 配置写入与我们的载荷共用 `/tmp/jiritsu/tmmc.jit`、`tmmc.dat`，上一次会话没干净结束时残留会让下一次被拒。删除命令的正确报文（A7C2 同款）是「先 select 目标路径，再发 `CMD_REMOVE`（18）且正文只有 `\0\xff`」——直接把路径塞进 `CMD_REMOVE` 会被拒成 `0x10000201`（真机实测）。做成自愈：`patches._windows_backend_file` 遇到 `0x10000004` 清一遍再重试一次；`cp._clear_temp` 在每个相机会话开头清一次；新增隐藏参数 `--inspect-once`（`src/a6700win/inspect_once.py`），用与界面相同的 controller 路径跑一次只读检查并把结论落 JSON，源码与冻结包都能用。真机复验：两个临时文件删除均 `True`、同会话整份只读读取 `260 块 / 133,120 字节`、`--inspect-once` 输出 `status: inspected` / `compatible: true` / `write_attempted: false`。新增 `tests/test_config_selfheal.py`（3 个用例），`pytest tests -q` → **96 passed / 1 skipped**。版本 0.3.6 → **0.3.7**。

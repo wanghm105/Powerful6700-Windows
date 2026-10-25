@@ -3,7 +3,7 @@
 ## 已在本机验证（无相机）
 
 - `.venv`（Python 3.12.3）里 `import usb / libusb_package / PySide6 / PyInstaller` 全部可用；
-- `pytest tests -q` → **93 passed / 1 skipped**（SetupAPI 解析与枚举、wdi 参数与白名单、补丁幂等与
+- `pytest tests -q` → **96 passed / 1 skipped**（SetupAPI 解析与枚举、wdi 参数与白名单、补丁幂等与
   载荷严格性、Windows 兼容层的设备锁/独占保存/二进制写/异常放锁、结构守卫的时间戳豁免与
   **写入目标回填**、恢复预约/写前拒绝分类、载荷错误文案、驱动页门闸、外观页会话释放、六个页面无头渲染、
   **UXC 语言资源的就地改名/整块后移/幂等，以及菜单文字写入与三档还原的假设备回归**、
@@ -252,3 +252,22 @@ USB 数据（`request()` 在 `backend.write()` 内部、发 USB 之前抛错）�
   并给出恢复步骤（拔线 → 关机 → 取电池约 1 分钟 → 装回 → 重连 MSC）。
 - 观察到的旁证：`0x10000004` 出现的那段时间，正是同一天多次「同会话写 CP + 写 145 KB 文件」
   掉线之后；取电池冷启 1 分钟之后同类写入一次成功。
+
+## 0.3.7：`0x10000004` 的自愈（2026-10-25 真机，已闭环）
+
+- 结论：这一步的失败是**可复现的机理**，不是随机拒绝。Senser 的文件传输（`0x4010` 配置写入）
+  和我们自己的载荷共用 `/tmp/jiritsu/tmmc.jit`、`/tmp/jiritsu/tmmc.dat`；上一次会话没干净结束时
+  残留会让下一次配置写入直接返回 `0x10000004`。
+- 删除命令的正确报文（A7C2 `src/camera_runtime/transport.py:417-420` 同款）：**先 select 目标路径，
+  再发 `CMD_REMOVE`（18）且正文只有 `\0\xff`**。把路径直接塞进 `CMD_REMOVE` 会被相机拒成
+  `0x10000201`（真机实测：`删除 /tmp/jiritsu/tmmc.jit 失败：Jiritsu 状态 0x10000201`）。
+- 真机复验（`probe_selfheal.py`，一个会话）：`删除 /tmp/jiritsu/tmmc.jit → True`、
+  `删除 /tmp/jiritsu/tmmc.dat → True`，随后同一会话整份只读读取 `读回 260 块 / 133120 字节`。
+- 自愈路径：`0x4010` 返回 `0x10000004` → 清两个临时文件 → 重发一次 `0x4010`；成功继续，
+  失败才抛错并写明是哪一步 + 恢复步骤。`cp.session` 开头也会清一次（`cp._clear_temp`）。
+- 端到端：`Powerful6700.exe --inspect-once`（隐藏参数，走与界面相同的 controller 路径，源码与冻结包都能跑）
+  输出 `ok: true`、`status: "inspected"`、`compatible: true`、`write_attempted: false`、
+  `read_sectors: 260`、`read_bytes: 133120`，六项功能状态 ftp/shutter/exposure/sound=enabled、
+  pixel_shift/dynamic_active=disabled。
+- 回归：`tests/test_config_selfheal.py` 3 个用例（重试成功 / 无 channel 时报错含恢复步骤 /
+  载荷写入不重试），`pytest tests -q` → 96 passed / 1 skipped。

@@ -221,17 +221,42 @@ def _status_text(body: bytes) -> str:
     return "状态 0x%08X%s（原始字节 %s）" % (value, known, body[:16].hex())
 
 
+def _clear_stale_temp(backend) -> list[str]:
+    """清掉上一次会话留在 /tmp/jiritsu 的临时文件，返回真的删掉的路径。"""
+    from . import dump
+
+    channel = getattr(backend, "channel", None)
+    if channel is None:
+        return []
+    removed = []
+    for path in dump.TEMP_PATHS:
+        try:
+            if dump.remove(channel, path):
+                removed.append(path)
+        except Exception:  # noqa: BLE001 - 清理失败不影响主流程
+            continue
+    return removed
+
+
 def _windows_backend_file(self, command, ident, data):
     """上游把三种失败写成同一句“文件写入或载荷执行失败”，界面看不出卡在哪一步。
 
     这里保留同样的校验，只把步骤、命令号和相机状态写清楚；错误发生在固件写入之前，
     相机里没有动任何功能字段，文案也直接告诉用户下一步该做什么。
+    另外对 0x10000004（临时文件被拒）做一次自愈：清掉 /tmp/jiritsu 的残留再试一次。
     """
     from a6700_unlock.device_protocol import DeviceError
 
     body = self._command(command, bytes([0, ident, 0]) + data)
     if len(body) == 4 and body == b"\0" * 4:
         return None
+    if command == 0x4010 and len(body) >= 4 and int.from_bytes(body[:4], "little") == 0x10000004:
+        removed = _clear_stale_temp(self)
+        if removed:
+            body = self._command(command, bytes([0, ident, 0]) + data)
+            if len(body) == 4 and body == b"\0" * 4:
+                self.progress("已清掉相机上一次会话留下的临时文件，配置写入成功，继续。")
+                return None
     step = _FILE_STEPS.get(command, "文件写入 0x%04X" % command)
     raise DeviceError(
         "相机拒绝了%s（file_id=%d），%s；这次没有写入任何功能字段。"

@@ -28,6 +28,7 @@ Powerful6700Win/
 │  ├─ uxc.py           UXC-v7 语言资源的解码、就地等长改名、整块后移（grow）、批量改写
 │  ├─ looknames.py     「菜单文字」：读 /usr 资源 → 定位四条外观记录 → 改名 / 三档还原 / 基线库
 │  ├─ bundle.py        「一次写入」：颜色与菜单文字按同一套选择写下去（两段会话 + 冷却、部分失败报告）
+│  ├─ inspect_once.py  --inspect-once：命令行复跑界面那条只读检查路径，结论落 JSON
 │  └─ gui/             PySide6 界面（须知/驱动/准备/功能/自定义外观/结果/诊断 七页，另有 theme、widgets、worker、render）
 ├─ tools/              研究用命令行（真机读取、CP 读写、flash 写入、外观标定、版面渲染等）
 ├─ third_party/a6700_unlock/   上游运行时 0.2.0（只读，不改一行）

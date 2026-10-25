@@ -138,6 +138,7 @@ CLI：`python tools/bundle_apply.py --apply --preset zh --confirm yes-write`，�
 | `Powerful6700.exe --offline-self-test` | 九项环境自检：Python / 平台 / 上游运行时 / 资源完整性 / 数据目录 / libusb / SetupAPI / libwdi / 控制器 |
 | `Powerful6700.exe --offline-self-test --json selftest.json` | 同上，结果落 JSON |
 | `Powerful6700.exe --diagnose` | 环境诊断（JSON），排障时贴给 Issue |
+| `Powerful6700.exe --inspect-once` | 跑一次真机只读检查（与界面同一条 controller 路径），结论落 JSON；排障用 |
 | `Powerful6700.exe --render-pages shots` | 七页界面离屏渲染，用来验证冻结包里的界面能正常构造 |
 | 界面「关于与诊断」 | 版本、数据目录、补丁点数（30 项）、最近一次运行记录 |
 

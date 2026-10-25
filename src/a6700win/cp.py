@@ -141,6 +141,7 @@ def session(progress=lambda message: None, timeout: float = 25.0):
     try:
         target, channel = legacy.run_authentication(
             None, 0x0336, timeout, True, progress=progress)
+        _clear_temp(channel, progress)
         yield CpChannel(target, channel)
     finally:
         if target is not None:
@@ -158,6 +159,25 @@ def session(progress=lambda message: None, timeout: float = 25.0):
 
 
 _last_exit = 0.0
+
+
+def _clear_temp(channel, progress=lambda message: None) -> None:
+    """会话一开始就清掉上一次留下的 /tmp/jiritsu 临时文件。
+
+    0x4010 配置写入与我们的载荷共用 tmmc.jit / tmmc.dat；上一次会话没干净结束时
+    残留会让这次配置写入直接被拒（0x10000004）。清理失败不阻断主流程。
+    """
+    from . import dump
+
+    removed = []
+    for path in dump.TEMP_PATHS:
+        try:
+            if dump.remove(channel, path):
+                removed.append(path)
+        except Exception:  # noqa: BLE001 - 相机没这个文件或命令不支持都正常
+            continue
+    if removed:
+        progress("已清掉上一次会话留下的临时文件：%s" % "、".join(p.rsplit("/", 1)[-1] for p in removed))
 
 
 def _cooldown(progress) -> None:
