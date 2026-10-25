@@ -16,7 +16,7 @@
 - [功能状态](#功能状态)
 - [自定义外观与菜单文字](#自定义外观与菜单文字)
 - [其他机型](#其他机型)
-- [这个项目和上游是什么关系](#这个项目和上游是什么关系)
+- [本项目和上游的关系](#本项目和上游的关系)
 - [下载与系统要求](#下载与系统要求)
 - [致谢](#致谢)
 - [开始前必读](#开始前必读)
@@ -105,19 +105,17 @@ python tools/looks_apply.py --confirm yes-write   # 相机先切到 USB 存储�
 | A6700 | [xyzhangxin/sony-a6700-powerful](https://github.com/xyzhangxin/sony-a6700-powerful) | 本项目所基于的上游，macOS 版 |
 | 其它 | [chocotan/a7c2-re](https://github.com/chocotan/a7c2-re)、[YuuLuo/a7c2-camera-tools](https://github.com/YuuLuo/a7c2-camera-tools) | 固件研究与相机侧工具 |
 
-## 这个项目和上游是什么关系
+## 本项目和上游的关系
 
-就是上游 [xyzhangxin/sony-a6700-powerful](https://github.com/xyzhangxin/sony-a6700-powerful) 的 Windows 版。上游是 macOS 项目，干活的逻辑没改；然后在此基础上继续开发而成。
-
-许可证跟上游一样，GPL-3.0-only。顺手给上游报过两个问题，记在 [docs/UPSTREAM-NOTES.md](docs/UPSTREAM-NOTES.md)：等待时失败会把相机留在服务模式；仓库里记的校验值和源码对不上。
+是上游 [xyzhangxin/sony-a6700-powerful](https://github.com/xyzhangxin/sony-a6700-powerful) 的 Windows 版。上游是 macOS 项目，干活的逻辑没改；然后在此基础上继续开发而成。
 
 ## 下载与系统要求
 
 | 系统 | 下载 | 说明 |
 | --- | --- | --- |
-| Windows 10 / 11 64 位 | [`Powerful6700-Windows-x64.zip`](https://github.com/wanghm105/Powerful6700-Windows/releases/latest)（约 46 MB） | 解压即用，绿色版，不用装 Python；包里有 `必读.txt` |
+| Windows 10 / 11 64 位 | [`Powerful6700-Windows-x64.zip`](https://github.com/wanghm105/Powerful6700-Windows/releases/latest)（约 47.9 MB） | 解压即用，绿色版，不用装 Python；包里有 `必读.txt` |
 
-- 校验值（v0.3.4-win.1）：`93761bfc65c196283a20506f0177088bcb0d055ffbe487baf3d491a2017ab366`
+- 校验值（v0.3.7-win.1）：`6dd1c13b611ab6f83958d4fe8f56fe02fbcc3cf1316628c5b2637d99de839cac`
 - 第一次绑驱动要管理员权限，建议右键「以管理员身份运行」。
 - 想从源码跑：建虚拟环境再 `python main.py`，或者双击 `启动.cmd`；步骤见 [docs/BUILD.md](docs/BUILD.md) 和 [requirements.txt](requirements.txt)。
 
