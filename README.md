@@ -196,9 +196,9 @@ python tools/looks_apply.py --confirm yes-write   # 相机切到 USB 存储模�
 
 | 系统 | 下载 | 说明 |
 | --- | --- | --- |
-| Windows 10 / 11 x64 | [`Powerful6700-Windows-x64.zip`](https://github.com/wanghm105/Powerful6700-Windows/releases/latest)（约 40 MB） | 解压即用，绿色版，不需要安装 Python；包内含 `必读.txt` |
+| Windows 10 / 11 x64 | [`Powerful6700-Windows-x64.zip`](https://github.com/wanghm105/Powerful6700-Windows/releases/latest)（约 46 MB） | 解压即用，绿色版，不需要安装 Python；包内含 `必读.txt` |
 
-- SHA-256：`e20e66cb5a577e24914cfd92ee99e2732013b94f94bc470f45bbd585e668cb4e`
+- SHA-256：`93761bfc65c196283a20506f0177088bcb0d055ffbe487baf3d491a2017ab366`（v0.3.4-win.1）
 - 首次把相机绑到 WinUSB 需要**管理员权限**，建议右键「以管理员身份运行」。
 - 也可以从源码运行：建虚拟环境 → `python main.py`，或直接双击 `启动.cmd`；步骤与依赖清单见 [docs/BUILD.md](docs/BUILD.md) 与 [requirements.txt](requirements.txt)。
 
@@ -280,19 +280,22 @@ A：不需要，冻结包自带运行时。源码运行才需要 Python 3.10+，
 
 ## 验证状态
 
-**本机真机验证（A6700 + 固件 2.00，2026-10-23）**
+**本机真机验证（A6700 + 固件 2.00）**
 
 | 路径 | 结果 |
 | --- | --- |
 | 只读检查 | 260 扇区 / 133,120 字节，兼容性通过，六项状态读出 |
-| 功能状态备份 | 41,582 字节，SHA-256 复算一致 |
-| 解锁写入 | `completed`，相机内二次校验 + 独立回读通过 |
-| 关闭写入 | `completed`，`touched=4`，重启后仍为关闭 |
-| 备份恢复 | `restored`，134 扇区 / 326 字节回写 + 独立回读 |
+| 功能状态备份 | 41,582 字节，SHA-256 复算一致（2026-10-23） |
+| 解锁写入 | `completed`，相机内二次校验 + 独立回读通过（2026-10-23） |
+| 关闭写入 | `completed`，`touched=4`，重启后仍为关闭（2026-10-23） |
+| 备份恢复 | `restored`，134 扇区 / 326 字节回写 + 独立回读（2026-10-23） |
+| 菜单文字写入 | 145,612 → 145,708 字节，五块全部回读一致；关机重启后菜单显示 `Classic Chrome` / `Classic Neg.` / `Positive Film` / `Negative Film`（2026-10-25） |
+| 菜单文字还原 | 145,612 字节 / sha256 `fe263360…`，与出厂资源逐字节一致（2026-10-25） |
+| 菜单文字（中文简称） | 145,692 字节，四个槽位显示 `富士CC` / `富士NC` / `理光正片` / `理光负片`，宽度正常（2026-10-25） |
 
-**离线验证**：37 个 pytest 用例通过（1 个按环境跳过）、六页界面离屏渲染、冻结包 `--offline-self-test` 九项通过。
+**离线验证**：86 个 pytest 用例通过（1 个按环境跳过）、七页界面离屏渲染、冻结包 `--offline-self-test` 九项通过。
 
-**未验证**：失败回滚（需要人为制造相机内校验失败）、跨固件／跨机型拒绝路径、干净机器上从零开始的驱动引导全流程。细节见 [docs/VALIDATION.md](docs/VALIDATION.md)。
+**未验证**：失败回滚（需要人为制造相机内校验失败）、跨固件／跨机型拒绝路径、干净机器上从零开始的驱动引导全流程、`/setting/` 写入通路。细节见 [docs/VALIDATION.md](docs/VALIDATION.md)。
 
 ## 命令行与开发
 
@@ -321,7 +324,7 @@ A：不需要，冻结包自带运行时。源码运行才需要 Python 3.10+，
 
 | 文档 | 内容 |
 | --- | --- |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 22 个补丁点、真实操作顺序、结果分类 |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 30 个补丁点、真实操作顺序、结果分类 |
 | [docs/VALIDATION.md](docs/VALIDATION.md) | 已／未验证清单与复现步骤 |
 | [docs/BUILD.md](docs/BUILD.md) | 离线建环境、打包、发布 |
 | [docs/UPSTREAM-NOTES.md](docs/UPSTREAM-NOTES.md) | 与上游 0.2.0 的逐项差异 |
