@@ -36,7 +36,7 @@
 | 动态增强防抖（Dynamic Active） | P1（高） | 跟随上游禁用（功能未完成） |
 | 位移多帧合成（Pixel Shift） | 暂缓 | 跟随上游禁用（实机稳定性失败已撤回） |
 
-更新节奏与细节见 [docs/PROGRESS.md](docs/PROGRESS.md)；想接着开发这个项目（或换个对话继续）先看 [docs/AI-HANDOFF.md](docs/AI-HANDOFF.md)：真机当前状态、协议常量、踩坑清单、待办做法都在那一份里。
+上面这张表的逐项说明——每项做什么、从哪进、真机验证到哪一步、有哪些边界——写在 [docs/FEATURES.md](docs/FEATURES.md)。更新节奏与后续方向见 [docs/PROGRESS.md](docs/PROGRESS.md)；想接着开发这个项目（或换个对话继续）先看 [docs/AI-HANDOFF.md](docs/AI-HANDOFF.md)：真机当前状态、协议常量、踩坑清单、待办做法都在那一份里。
 
 ### 解锁后，相机菜单里会多出这些
 
@@ -118,6 +118,7 @@ python tools/looks_apply.py --confirm yes-write   # 相机切到 USB 存储模�
 - [这个项目和上游是什么关系](#这个项目和上游是什么关系)
 - [截图](#截图)
 - [功能明细](#功能明细)
+- [现有功能逐项说明](docs/FEATURES.md)
 - [下载与系统要求](#下载与系统要求)
 - [开始前必读](#开始前必读)
 - [操作指南](#操作指南)
@@ -185,6 +186,8 @@ python tools/looks_apply.py --confirm yes-write   # 相机切到 USB 存储模�
 
 ## 功能明细
 
+逐项展开（入口、改了什么、真机验证到哪一步、已知边界）在 [docs/FEATURES.md](docs/FEATURES.md)，这里是速查：
+
 | 功能 | 说明 |
 | --- | --- |
 | **只读兼容性预检** | 读固定窗口的 260 个扇区（133,120 字节），逐项校验已知字段、结构守卫与未管理字节哈希，得出每个功能当前的开关状态。**不写相机。** |
@@ -195,7 +198,9 @@ python tools/looks_apply.py --confirm yes-write   # 相机切到 USB 存储模�
 | **环境诊断 / 离线自检** | 不接相机也能验证运行环境、载荷完整性、界面可用性（`--offline-self-test`）。 |
 | **机身验收提示** | 写入成功后给出「断电重启 → 到菜单里逐项核对」的步骤与每个功能的菜单路径。 |
 | **自定义外观（研究性）** | 把 PT／NT／VV／VV2 换成 Classic Chrome、Classic Negative、理光正片／负片：改 CP 色度表 + 改菜单文本。图形界面在「自定义外观」页，也可用命令行。见 [docs/LOOKS.md](docs/LOOKS.md)。 |
+| **菜单文字（研究性）** | 同一页的「菜单文字」卡片：两套命名（官方原名／中文简称）可切换写入，写前自动存整份基线，还原可逐字节写回。见 [docs/LOOKS.md](docs/LOOKS.md) §7.1。 |
 | **服务模式救援** | 发现相机停在 0x0336 时自动尝试退出，而不是要求你拔插数据线。 |
+| **会话冷却** | 两次认证会话之间默认等 50 秒（`POWERFUL6700_SESSION_GAP` 可覆盖），避免写 CP 单元后紧接着写 145 KB 文件时掉线。 |
 
 ## 下载与系统要求
 
@@ -330,6 +335,7 @@ A：不需要，冻结包自带运行时。源码运行才需要 Python 3.10+，
 | 文档 | 内容 |
 | --- | --- |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 30 个补丁点、真实操作顺序、结果分类 |
+| [docs/FEATURES.md](docs/FEATURES.md) | 现有功能逐项说明：入口、改了什么、验证到哪一步、边界 |
 | [docs/VALIDATION.md](docs/VALIDATION.md) | 已／未验证清单与复现步骤 |
 | [docs/BUILD.md](docs/BUILD.md) | 离线建环境、打包、发布 |
 | [docs/UPSTREAM-NOTES.md](docs/UPSTREAM-NOTES.md) | 与上游 0.2.0 的逐项差异 |

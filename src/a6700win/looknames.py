@@ -382,7 +382,8 @@ def _rows(raw: bytes, preset: str | None = None) -> list[dict]:
         else:
             state = "mixed"
             current = " / ".join(present)
-        rows.append({"look": row["look"], "slot": row["slot"], "target": row["text"],
+        rows.append({"look": row["look"], "slot": row["slot"], "label": row.get("label") or "",
+                     "target": row["text"],
                      "current": current, "rids": list(rids), "state": state,
                      "variants": row.get("variants") or {}})
     return rows
