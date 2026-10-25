@@ -1,8 +1,8 @@
 {
   "payload": "flash_write.elf",
-  "sha256": "2bf5cc3cdbd3848cfbc46b990072db331dc53d0e80f663ed52319bce598e5a3d",
-  "bytes": 73808,
+  "sha256": "94b45897f48b26d606cc41d2b3fee3e74bd1c767a3eef0553c57df246d022c6c",
+  "bytes": 74040,
   "source": "flash_write.c",
   "compiler": "zig 0.13.0 (aarch64-freestanding + ld.lld)",
-  "mode": "write-capable: pwrite64 path, refuses targets outside /usr/ and /cp/, fsync + read-back verify, remounts read-only afterwards"
+  "mode": "write-capable: pwrite64 path, refuses targets outside /usr/, /cp/ and /setting/ (the last one only for BACKUP.BIN), fsync + read-back verify, remounts read-only afterwards"
 }

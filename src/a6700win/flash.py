@@ -2,8 +2,9 @@
 """机身文件写入（显式写载荷 native/flash_write.elf）。
 
 与只读载荷 native/dump_range.elf 分成两份，是因为写入能力必须能被显式拒绝：
-只读工具永远不会加载本模块的载荷，本模块的载荷也只会打开 /usr/ 与 /cp/ 下的
-普通文件，碰到 /dev/* 或其它路径直接返回「拒绝写入」。
+只读工具永远不会加载本模块的载荷，本模块的载荷也只会打开 /usr/、/cp/ 与
+/setting/ 下的普通文件（/setting 只用 BACKUP.BIN，即 CP 单元的持久镜像），
+碰到 /dev/* 或其它路径直接返回「拒绝写入」。
 
 协议与 dump_range.c 完全一致（28 字节头 + 路径），额外多一个数据文件
 /tmp/jiritsu/tmmc.dat：写入前先把这 length 字节传到相机，载荷会核对它的
@@ -42,7 +43,7 @@ MODE_WRITE_SEQ = 6
 MODE_SCRATCH = 9
 MODE_TRUNCATE = 10
 
-WRITABLE_ROOTS = ("/usr/", "/cp/")
+WRITABLE_ROOTS = ("/usr/", "/cp/", "/setting/")
 
 TARGETS = {
     "appfw": {"path": "/usr/lib/appFw.so", "size": 89027992,
@@ -58,7 +59,7 @@ STATUS_TEXT = {
     3: "读取目标失败",
     4: "路径或长度越界",
     5: "定位目标长度失败",
-    6: "拒绝写入：只允许 /usr/ 与 /cp/ 下的普通文件，并且必须以 root 运行",
+    6: "拒绝写入：只允许 /usr/、/cp/ 与 /setting/ 下的普通文件，并且必须以 root 运行",
     7: "写入失败",
     8: "fsync 失败",
     9: "回读校验失败（写入的字节与预期不一致）",
@@ -97,7 +98,7 @@ READABLE_ROOTS = ("/usr/", "/cp/", "/setting/", "/system/")
 
 
 def allowed(path: str) -> bool:
-    """写入白名单：只有 /usr/ 与 /cp/ 可写，其它挂载点一律拒绝。"""
+    """写入白名单：/usr/、/cp/ 与 /setting/ 可写，其它挂载点一律拒绝。"""
     if not path.startswith(WRITABLE_ROOTS):
         return False
     if "/../" in path or "/dev/" in path:
@@ -117,7 +118,7 @@ def allowed_read(path: str) -> bool:
 def _request(path: str, offset: int, length: int, mode: int) -> bytes:
     writable = mode in (MODE_WRITE, MODE_PROBE, MODE_PROBE_SEQ, MODE_WRITE_SEQ, MODE_TRUNCATE)
     if writable and not allowed(path):
-        raise FlashError(f"拒绝写入 {path}：只允许 /usr/ 与 /cp/ 下的文件。")
+        raise FlashError(f"拒绝写入 {path}：只允许 /usr/、/cp/ 与 /setting/ 下的文件。")
     if not writable and not allowed_read(path):
         raise FlashError(f"拒绝读取 {path}：允许 /usr/、/cp/、/setting、/system。")
     encoded = path.encode("utf-8", "strict")
@@ -179,7 +180,7 @@ def truncate(backend, path: str, size: int, elf: bytes | None = None) -> int:
     bytes first, then truncates, so the file ends up byte-identical to the backup.
     """
     if not allowed(path):
-        raise FlashError(f"拒绝写入 {path}：只允许 /usr/ 与 /cp/ 下的文件。")
+        raise FlashError(f"拒绝写入 {path}：只允许 /usr/、/cp/ 与 /setting/ 下的文件。")
     actual = _parse(_execute(backend, elf or payload(),
                              _request(path, size, 0, MODE_TRUNCATE)))["size"]
     return actual

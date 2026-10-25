@@ -5,7 +5,10 @@
 
 ## 0. 图形界面入口
 
-程序左侧导航有「自定义外观」页：点「检测当前状态」读取四条记录（只读），点「写入配方」写入并回读校验，点「还原本页外观」写回出厂值。写入后界面会显示每条记录处于「已写入配方 / 出厂外观 / 已被其它改动」中的哪一种，并单独报告与本页无关的记录是否被改动。
+程序左侧导航有「自定义外观」页，页里两张卡片：
+
+- **颜色**（当前状态）：点「检测当前状态」读取四条色度记录（只读，同时也会读菜单文字），点「写入配方」写入并回读校验，点「还原本页外观」写回出厂值。写入后界面会显示每条记录处于「已写入配方 / 出厂外观 / 已被其它改动」中的哪一种，并单独报告与本页无关的记录是否被改动。
+- **菜单文字**：点「写入菜单文字」把 PT/NT/VV/VV2 的显示名改成 富士CC / 富士NC / 理光PF / 理光NF；点「还原菜单文字」按基线整份还原；点「导入基线…」可以手动指定一份出厂语言资源。细节见 7.1。
 
 命令行等价：
 
@@ -88,8 +91,21 @@ python .data/hue_eval.py <ST.jpg> <LOOK.jpg>     # 输出 12 档比值、最优�
 
 1. `python tools/cp_verify_factory.py` —— 逐单元与 `/setting/def/BACKUP.BIN` 的出厂副本比对；
 2. `python tools/restore_units.py` —— 把出厂值写回 CP RAM；
-3. **正常关机再开机** —— 相机才会把 RAM 覆盖进 `/setting/BACKUP.BIN`（少了这步会出现"当场对、重启又变"）；
-4. 名称还原：把 `firmware/uxc/string_simplifiedchinese_f.uxc.20261023T233448Z.bin`（145,612 B，sha256 fe263360c15b5530）写回 `/usr/share/app/string_simplifiedchinese_f.uxc`，**写完必须 truncate 到 145,612 B**（相机当前是 145,692 B），再回读比对；GUI 暂无按钮，用 `tools/uxc_grow.py`（写）+ `a6700win.flash.truncate`（截断）完成。
+3. **正常关机、等满 1 分钟再开机** —— 相机才会把 RAM 覆盖进 `/setting/BACKUP.BIN`（少了这步会出现"当场对、重启又变"；关机后立刻开机同样会丢，实测见 `docs/CC-CN-PLAYBOOK.md` 第 6 节）；
+4. 名称还原：见下面「7.1 菜单文字」——GUI 里点「还原菜单文字」即可；等价的手工路径是把 `firmware/uxc/string_simplifiedchinese_f.uxc.20261023T233448Z.bin`（145,612 B，sha256 fe263360c15b5530）整份写回 `/usr/share/app/string_simplifiedchinese_f.uxc`，写完 `flash.truncate` 到 145,612 B，再整份回读比对。
+
+### 7.1 菜单文字（名字）
+
+颜色记录在 RAM 里（关机才落盘），菜单文字在 `/usr/share/app/string_simplifiedchinese_f.uxc` 这个 ext2 文件里（一写就持久）。所以两件事分开写、分开还原，界面上也是两张卡片。
+
+- **记录定位**：每个外观有两条记录（菜单短名 + 列表名），出厂文字就是槽位缩写本身。ST=0x021C658E；PT=0x021C6654/0x021C6F8B；NT=0x021C6434/0x021C7002；VV=0x021C687B/0x021C6F80；VV2=0x021C689A/0x021C6F4D；FL=0x021C6CC9；IN=0x021C6857；SH=0x021C6961；BW=0x021C65F8；SE=0x021C658A。`menu_slot` / `menu_text` 写在 `docs/looks-profile.json`。
+- **写入**：短名（2 字节）装不下「富士CC」（7 字节），所以走 `uxc.rename_all` 的整块后移 + 索引表重写；写回按 0x8000 分块，文件变短时 `flash.truncate`，最后整份回读比对。四个外观改完从 145,612 → 145,676 字节（实测算术值，+64）。
+- **还原三档**（界面 `baseline` 一行会说明当前是哪一档）：
+  1. **整份基线**：写入前自动把整份资源存进 `.data/looknames/`（`index.json` 记 sha256/字节数/来源/时间），还原时整份逐字节写回并校验基线自身哈希。这是「无损」那一档。
+  2. **短名回写**：本地没有基线时，只能把文字改回出厂短名（PT/NT/VV/VV2）。实测这份资源「改名 → 改回短名」后与原文件**逐字节一致**（长度也回到 145,612），但这只是实测行为，不能当承诺：别的固件版本或别的改动顺序不一定成立。
+  3. **不写**：没有差异就只报告。
+- **导入基线**：手上有出厂 `*.uxc` 备份时，界面「导入基线…」会校验 magic/`kind=8`/外观记录是否齐全，再收进基线库。
+- 纯逻辑测试在 `tests/test_looknames.py`（合成资源，不碰相机）。
 
 ## 8. 工具索引
 
@@ -102,6 +118,8 @@ python .data/hue_eval.py <ST.jpg> <LOOK.jpg>     # 输出 12 档比值、最优�
 | `tools/cp_read.py` / `cp_write.py` | CP 单元读写原语 |
 
 ## 9. 定稿验收记录（2026-10-24，WHM00128..00136）
+
+> 参照物怎么选的、样本量与矫正率怎么算，见 `docs/CALIBRATION.md`。
 
 同场景、同机位、相机内直接出片；取每张 JPEG 的 12 档逐 30° 色相色度中位数，除以首张 ST。
 卡目录 F:/DCIM/10330101，顺序 ST → PT → NT → VV → VV2 → FL → IN → SH → SE（BW 未拍）。

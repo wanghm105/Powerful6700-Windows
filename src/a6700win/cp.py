@@ -11,7 +11,9 @@
 """
 from __future__ import annotations
 
+import os
 import struct
+import time
 from contextlib import contextmanager
 
 from . import patches, paths, windows_shim
@@ -23,6 +25,10 @@ SENSER_MIN = 0x200
 SENSER_CHUNK = 0x8000
 HEADER = 12
 CHROMA_UNIT = 0x02A40001
+
+# 两个服务会话之间必须留的冷却（秒）。实测紧接着开第二会话会让相机端点掉线，
+# 间隔 60 秒就正常；取 50 秒留一点余量，可用环境变量覆盖以便现场调试。
+SESSION_GAP = float(os.environ.get("POWERFUL6700_SESSION_GAP") or 50.0)
 
 
 class CpError(RuntimeError):
@@ -118,11 +124,17 @@ def session(progress=lambda message: None, timeout: float = 25.0):
     """认证进服务模式，交出一条 CpChannel；结束时一定发 STOP_SENSER。
 
     服务模式下相机不挂载存储卡、不能拍照，所以调用方要尽快做完并退出。
+
+    两个会话之间必须留冷却时间：实测同一次插入里紧接着开第二会话（间隔几秒），
+    认证能过但随后端点就掉（USBError Pipe error / No such device），写一半的
+    /usr 文件会留在半截状态。间隔 60 秒再开就正常。所以这里自己等，不要求用户
+    反复拔插线。
     """
     paths.ensure_vendor_on_path()
     from a6700_unlock.usb import legacy
 
     patches.install()
+    _cooldown(progress)
     lock = windows_shim.device_lock(paths.state_dir())
     lock.__enter__()
     target = channel = None
@@ -141,3 +153,24 @@ def session(progress=lambda message: None, timeout: float = 25.0):
             except Exception:  # noqa: BLE001
                 pass
         lock.__exit__(None, None, None)
+        global _last_exit
+        _last_exit = time.monotonic()
+
+
+_last_exit = 0.0
+
+
+def _cooldown(progress) -> None:
+    """距上一次会话结束不足 SESSION_GAP 秒就先等一会儿。"""
+    if not _last_exit:
+        return
+    remaining = SESSION_GAP - (time.monotonic() - _last_exit)
+    if remaining <= 0:
+        return
+    progress(f"相机正在复位上一个会话，等待 {remaining:.0f} 秒再连…")
+    deadline = time.monotonic() + remaining
+    while True:
+        left = deadline - time.monotonic()
+        if left <= 0:
+            return
+        time.sleep(min(left, 5.0))

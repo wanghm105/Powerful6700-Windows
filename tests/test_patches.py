@@ -33,6 +33,7 @@ EXPECTED = {
     "controller.reserve",
     "operations._execute_session",
     "operations._restore_session",
+    "usb.backend.UsbBackend._file",
     "controller.available_backups",
     "controller.restore_scope",
     "device_profile.inspect_sectors",
@@ -177,3 +178,25 @@ def test_preimage_rejection_is_not_reported_as_readback_failure():
     result = wrapped()
     assert result["status"] == "rejected"
     assert result["error"] == "preimage changed"
+
+
+def test_payload_rejection_names_the_step_and_status():
+    """相机拒绝载荷时，错误里要能看出是哪一步、状态码是多少。"""
+    from a6700_unlock.device_protocol import DeviceError
+
+    class Rejecting:
+        def _command(self, command, payload):
+            return b"\x04\x00\x00\x10"
+
+    class Accepting:
+        def _command(self, command, payload):
+            return b"\0\0\0\0"
+
+    with pytest.raises(DeviceError) as excinfo:
+        patches._windows_backend_file(Rejecting(), 0x4007, 2, b"payload")
+    message = str(excinfo.value)
+    assert "载荷写入" in message
+    assert "0x10000004" in message
+    assert "04000010" in message
+
+    assert patches._windows_backend_file(Accepting(), 0x4010, 0, b"") is None

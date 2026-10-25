@@ -9,23 +9,32 @@
 ```
 Powerful6700Win/
 ├─ src/a6700win/
-│  ├─ __main__.py      命令行入口（GUI / --offline-self-test / --diagnose / --elevated-worker）
+│  ├─ __main__.py      命令行入口（GUI / --offline-self-test / --diagnose / --render-pages / --elevated-worker）
 │  ├─ app.py           build_controller()：安装补丁 → 构造 DesktopController
 │  ├─ patches.py       全部补丁点：设备层 + doctor + 载荷校验 + POSIX 兼容
 │  ├─ windows_shim.py  POSIX 语义的 Windows 等价物：设备锁、目录落盘、二进制写、O_NONBLOCK
 │  ├─ paths.py         可写数据目录探测、冻结/源码两套根路径
+│  ├─ version.py       版本号（界面与自检共用）
 │  ├─ selftest.py      离线自检（不需要相机）
 │  ├─ usb/
 │  │  ├─ setupapi.py   纯 ctypes 的 SetupAPI 枚举（不需要管理员、不加载 libusb）
 │  │  ├─ driver.py     libwdi 的 wdi-simple.exe：下载、参数、提权安装、轮询结果
 │  │  └─ windows_auth.py  Windows 版 run_authentication：驱动准备 + 双阶段 Senser 认证
-│  └─ gui/             PySide6 界面（须页/准备页/功能页/结果页/驱动页/诊断页）
+│  ├─ research.py      Senser 服务会话的最小实现（服务模式 0x0336 + 文件命令，研究工具复用）
+│  ├─ dump.py          相机侧只读载荷（dump_range）的收发与分块落盘
+│  ├─ cp.py            CP 单元读写（pFunc 0x40 / 0x603，0x40 读、0x41 写）与会话管理
+│  ├─ flash.py         走 Jiritsu 文件命令读写 /usr、/cp 里的文件（stat / read_range / write_block / truncate）
+│  ├─ looks.py         四个外观槽的 CP 色度记录（bank 1/4/6/14，每条 64 字节）读写与还原
+│  ├─ uxc.py           UXC-v7 语言资源的解码、就地等长改名、整块后移（grow）、批量改写
+│  ├─ looknames.py     「菜单文字」：读 /usr 资源 → 定位四条外观记录 → 改名 / 三档还原 / 基线库
+│  └─ gui/             PySide6 界面（须知/驱动/准备/功能/自定义外观/结果/诊断 七页，另有 theme、widgets、worker、render）
+├─ tools/              研究用命令行（真机读取、CP 读写、flash 写入、外观标定、版面渲染等）
 ├─ third_party/a6700_unlock/   上游运行时 0.2.0（只读，不改一行）
 ├─ packaging/          PyInstaller spec + 入口 + build.ps1
-└─ tests/              pytest：SetupAPI 解析、wdi 参数、补丁幂等、载荷严格性、无头渲染
+└─ tests/              pytest：SetupAPI 解析、wdi 参数、补丁幂等、载荷严格性、UXC 改名与还原、无头渲染
 ```
 
-## 补丁点（`patches.install()`，共 27 项，可重复调用）
+## 补丁点（`patches.install()`，共 30 项，可重复调用）
 
 上游模块在自己的作用域里 `from … import name` 绑定了函数，所以必须**逐个模块**替换属性，
 而不是只改定义模块：
@@ -49,6 +58,7 @@ Powerful6700Win/
 | `controller.run_reserved` | 上游 `run_reserved()` 没有 `try/except`：设备出错时异常冒到界面，`busy` 永远为 True，界面卡在"操作进行中"且按钮全灰 |
 | `controller.reserve` | 恢复不读勾选，但上游 `reserve()` 会因为"没勾功能"提前拒绝；相机全开时 `selected_features` 为空，恢复永远点不动 |
 | `operations._execute_session` / `operations._restore_session` | 设备返回 status=1（写前校验拒绝、零字节写入）时，上游把它归成 `verification-failed`，`rejected` 分支实际不可达；包一层改成 `rejected` |
+| `usb.backend.UsbBackend._file` | 配置（0x4010）、载荷（0x4007）、执行（0x4008）三处失败都是同一句“文件写入或载荷执行失败”，界面看不出卡在哪；重写为带步骤、命令号、状态码（大小端）与下一步处置的文案 |
 | `controller.available_backups` | 上游在 physical 模式下除非当前动作已是 backup/restore 就返回空列表，而 `reserve('restore', id)` 先按该列表校验备份 ID 才设置 `self.action` → 桌面端恢复永远不可用；改为照常枚举程序自己的备份目录并按 `profile.digest` 过滤 |
 | `controller.restore_scope` | 上游对 restore 也传 `features=sorted(self.selected_features)`，`restore_plan()` 只写回勾选功能；「恢复整份备份」应整份写回，故调用前临时把选择扩到全部已开放功能，调用后还原 |
 | `device_profile.inspect_sectors` / `operations.inspect_sectors` | /usr（nflasha15，ext2）里有 9 个结构守卫扇区落在 inode 表上，相机自己会刷新 inode 的 atime/ctime/mtime，导致什么都没做也判 blocked；豁免表 `src/a6700win/data/guard-overlay.json` 只放行每个 inode 记录里的 12 字节时间戳（并同时把期望哈希换成清零后的值），mode/size/blocks 与其余字节仍逐字节校验。归一化**只用于比对**：返回的写入目标会把时间戳按相机原值补回，否则 `device_protocol.request()` 会把这 12 字节判成越界修改、在发 USB 之前整单拒绝（0.3.1 的写入失败即此）|

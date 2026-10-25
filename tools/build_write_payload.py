@@ -28,7 +28,8 @@ def build() -> dict:
     manifest = dict(payload="flash_write.elf", sha256=hashlib.sha256(data).hexdigest(),
                     bytes=len(data), source="flash_write.c",
                     compiler="zig 0.13.0 (aarch64-freestanding + ld.lld)",
-                    mode="write-capable: pwrite64 path, refuses targets outside /usr/ and /cp/, "
+                    mode="write-capable: pwrite64 path, refuses targets outside /usr/, /cp/ and /setting/ "
+                         "(the last one only for BACKUP.BIN), "
                          "fsync + read-back verify, remounts read-only afterwards")
     MANIFEST.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return manifest

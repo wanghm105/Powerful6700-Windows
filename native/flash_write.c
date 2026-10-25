@@ -2,8 +2,9 @@
  *
  * THIS PAYLOAD CAN MODIFY CAMERA STORAGE. It is loaded only when the host
  * explicitly asks for a write (tools/flash_write.py) and it refuses any target
- * outside /usr/ and /cp/, never opens /dev/*, and never reports success when
- * the read-back comparison fails.
+ * outside /usr/, /cp/ and /setting/ (the last one only for BACKUP.BIN, which
+ * carries the CP unit mirror), never opens a device node under /dev, and never
+ * reports success when the read-back comparison fails.
  *
  * Request /tmp/jiritsu/tmmc.jit (same 28-byte header as dump_range.c):
  *   0  "A67D"   4  u32 version = 1   8  u32 mode   12 u32 path_len
@@ -142,6 +143,7 @@ static const char *mount_point(const char *path) {
     if (has(path, "/../") || has(path, "/dev/")) return 0;
     if (starts(path, "/usr/")) return "/usr";
     if (starts(path, "/cp/")) return "/cp";
+    if (starts(path, "/setting/")) return "/setting";
     return 0;
 }
 
@@ -332,7 +334,7 @@ __attribute__((constructor)) static void run(void) {
         return;
     }
 
-    /* Modes 3 and 4 write; both refuse anything outside /usr/ and /cp/. */
+    /* Modes 3 and 4 write; both refuse anything outside /usr/, /cp/ and /setting/. */
     if (!where || call6(SYS_GETEUID, 0, 0, 0, 0, 0, 0) != 0) { publish(6, mode, 0, 0); return; }
     unsigned long long offset = get64(16);
 

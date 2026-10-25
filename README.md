@@ -10,6 +10,8 @@
 **✅ 富士 CC / NC、理光正片 / 负片外观　　✅ 一键解锁／关闭　　✅ 写入前逐字节只读体检**<br>
 **✅ 写入后独立回读校验　　✅ WinUSB 自动准备　　✅ 功能状态备份与整份恢复　　✅ 绿色版免安装**
 
+> 想接着开发这个项目（或换个对话继续）先看 [docs/AI-HANDOFF.md](docs/AI-HANDOFF.md)：真机当前状态、协议常量、踩坑清单、待办做法都在那一份里。
+
 ### 解锁后，相机菜单里会多出这些
 
 | 功能 | 解锁后机身里的变化 | 验证情况 |
@@ -40,6 +42,8 @@
 | VV（第 4 项） | Positive Film（理光正片） | 低饱和轻量版 |
 | VV2（第 5 项） | Negative Film（理光负片） | 低饱和轻量版 |
 
+四个外观、每个 12 个色相档，共 48 个色相单元；参照 19 张官方直出对照图（切出 72 个外观样本），真机累计 10 轮 × 9 帧 ≈ 90 帧，最终逐色相矫正率 **81.7% / 82.7% / 81.1% / 67.0%**。口径与公式、以及「官方 LUT 为什么不能当目标」的审计结论，都写在 [docs/CALIBRATION.md](docs/CALIBRATION.md)。
+
 ![自定义外观页：四个槽位写成「原厂 → 改写为」，并列出颜色记录与拟合 RMS](docs/images/looks.png)
 
 两种写法，效果一样：
@@ -52,6 +56,13 @@ python tools/looks_apply.py --confirm yes-write   # 相机切到 USB 存储模�
 ```
 
 两条路都只改 RAM 里的 4 条色度记录（bank 6/4/1/14），写完回读校验；要让改动在关机后仍在，正常关机一次让相机自己写回 BACKUP.BIN。点「还原本页外观」可把这四条写回出厂值。
+
+菜单上显示的名字也归这一页管。同一个页面里的「菜单文字」卡片可以把 PT / NT / VV / VV2 改成 富士CC / 富士NC / 理光PF / 理光NF，也能一键还原：
+
+- 名字写在固件的语言资源文件里（`/usr/share/app/string_simplifiedchinese_f.uxc`），和颜色不是一回事——颜色关机才落盘，名字写下去就持久；
+- 写入前程序会把整份资源（约 142 KB）存一份基线，还原时整份逐字节写回并比对哈希；
+- 本地没有基线时只把文字改回出厂短名，界面会直接说明这一档不是逐字节还原；
+- 手上有出厂备份就点「导入基线…」，文件会先过格式校验。
 
 **边界说清楚**：A6700 没有可用的伽马/曲线层（cpapp 里那 9 条斜坡是死数据，改成 gamma 2.2 后实拍与屏幕都没变化），所以只能改「颜色倾向」，做不出富士的 S 形影调；NC 的窄带品红缺口是用宽把手逼近的；理光正片/负片停在低饱和版。`.cube`／`.dcp` 不能直接导入。详见 [docs/LOOKS.md](docs/LOOKS.md)。
 
@@ -97,7 +108,7 @@ python tools/looks_apply.py --confirm yes-write   # 相机切到 USB 存储模�
 
 - `third_party/a6700_unlock/` 是上游运行时 [0.2.0](https://github.com/xyzhangxin/sony-a6700-powerful/releases/tag/v0.2.0) 的**逐字节副本**（GPL-3.0，含 LICENSE／NOTICE），固件字段表、写入事务、结果分类、界面状态机都是上游的。
 - 本项目自己写的代码只有 `src/a6700win/`（Windows 适配层 + PySide6 界面）、`tools/`、`tests/`、`packaging/`。
-- 适配方式不是在运行时里改代码，而是**在启动时注入 24 个替换点**（`src/a6700win/patches.py`，逐项理由见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)），因此上游再发版时可以整目录替换后重新对齐。
+- 适配方式不是在运行时里改代码，而是**在启动时注入 30 个替换点**（`src/a6700win/patches.py`，逐项理由见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)），因此上游再发版时可以整目录替换后重新对齐。
 
 我们具体做了什么：
 

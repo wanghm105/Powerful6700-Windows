@@ -1,7 +1,8 @@
 # 外观配色（Creative Look）实验记录
 
 > 本文件记录"用 CP 单元给 A6700 造外观"的全部标定过程与结论。
-> 操作手册见 `docs/CC-CN-PLAYBOOK.md`，能力边界见 `docs/CC-CN.md`，持久化见 `docs/PERSIST-STORE.md`。
+> 操作手册见 `docs/CC-CN-PLAYBOOK.md`，能力边界见 `docs/CC-CN.md`，持久化见 `docs/PERSIST-STORE.md`，
+> 参照物与最终矫正率的核算见 `docs/CALIBRATION.md`。
 >
 > 注：本文件在 2026-10-24 16:23 被一次追加写入误覆盖，以下 1–10 节按当时的实验结论重建，
 > 细节以 `CC-CN-PLAYBOOK.md` / `CC-CN.md` / `PERSIST-STORE.md` 为准；11 节是最新成果。
@@ -39,6 +40,7 @@ profile 54 实测有效（双号对照法：两外观指同号 → 渲染完全�
 - **外观八参数（对比度等）不在 `/setting/BACKUP.BIN`**：全文件搜元组 0 命中；改 +9 只让文件变 1,896 B 且参数区 0 差异。
 - **CP 参数 50..63 全 0** ⇒ 自定义位没有独立颜色。
 - **CP RAM 写入不保证持久**：关机重开后回到出厂，必须让相机自己写 BACKUP.BIN。
+  （2026-10-25 实测：关机后立刻开机不落盘，等满 1 分钟再开才会写进 BACKUP。）
 
 ## 4. 标定方法（RAW 当色卡）
 

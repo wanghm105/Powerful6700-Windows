@@ -3,9 +3,10 @@
 ## 已在本机验证（无相机）
 
 - `.venv`（Python 3.12.3）里 `import usb / libusb_package / PySide6 / PyInstaller` 全部可用；
-- `pytest tests -q` → **74 passed / 1 skipped**（SetupAPI 解析与枚举、wdi 参数与白名单、补丁幂等与
+- `pytest tests -q` → **86 passed / 1 skipped**（SetupAPI 解析与枚举、wdi 参数与白名单、补丁幂等与
   载荷严格性、Windows 兼容层的设备锁/独占保存/二进制写/异常放锁、结构守卫的时间戳豁免与
-  **写入目标回填**、恢复预约/写前拒绝分类、驱动页门闸、外观页会话释放、六个页面无头渲染）；
+  **写入目标回填**、恢复预约/写前拒绝分类、载荷错误文案、驱动页门闸、外观页会话释放、六个页面无头渲染、
+  **UXC 语言资源的就地改名/整块后移/幂等，以及菜单文字写入与三档还原的假设备回归**）；
 - `--offline-self-test`（源码运行）：python / platform / vendor / files / data-dir / libusb / setupapi /
   controller 全 OK，wdi 因未下载而 SKIP；
 - `build_controller('physical') + check_environment()` → `environment.ready = True`，
@@ -87,7 +88,7 @@ sha256 040916c1...3a82，zig 0.13.0 / aarch64-freestanding + ld.lld 构建）。
 
 - 已在本机验证（无相机）：协议编解码、分块循环、偏移/限长、零长度设备提示、
   载荷清单校验、/tmp/jiritsu/../.. 路径穿越拼装 —— tests/test_dump.py 10 个用例，
-  全仓 pytest 74 passed / 1 skipped。
+  全仓 pytest 75 passed / 1 skipped。
 - 已在真机验证（2026-10-23/24，A6700 + 固件 2.00，全程只读）：
 
   | 对象 | 结果 |
@@ -138,3 +139,79 @@ USB 数据（`request()` 在 `backend.write()` 内部、发 USB 之前抛错）�
 
 未验证：修复后的真实写入。0.3.1 起没有做过实机写入，0.3.2 的解锁／关闭需要在真机上重新验收
 一次（`status=completed` + 独立回读 + 重启后状态保持）才能说这条路径恢复。
+
+## 菜单文字写入与还原（2026-10-25 真机，已闭环）
+
+真机结论（A6700 · 固件 2.00）：
+
+0. **写入成功并持久**（16:47 写入 official 方案）：`PT→Classic Chrome`、`NT→Classic Neg.`、
+   `VV→Positive Film`、`VV2→Negative Film`，共 8 条记录；145,612 → 145,708 B（+96），
+   分 5 块写完再整份回读，`sha256 9fd0bb497171`、`kind=renamed`、四条 `installed`。
+   用户关机开机后菜单四个槽位分别显示这四个英文名，**重启后再读文件仍是 `9fd0bb49`** →
+   `/usr` 上的 ext2 写入是一写就持久的（跟 CP 那种「内存 + 关机落盘」不是一回事）。
+   随后 `restore()` 走出厂基线：`mode=baseline`、145,612 B、`sha fe263360c15b5530`、四条 `factory`。
+1. **还原成功**：一次会话内 `truncate(145,708 → 145,612)` + 写 5 块 + 整份回读，
+   得到 `mode=baseline bytes=145612 sha=fe263360c15b5530 kind=factory`，四条外观 state 全部 `factory`。
+2. **写入路径的坑（已修）**：grow 场景（145,612 → 145,708）先分块写再截断会失败——
+   最后一块落在原长度之外，载荷回 `状态 12（范围超出文件长度）`；正确顺序是**先 `ftruncate` 扩到目标长度再覆盖写**。
+   修在 `src/a6700win/looknames.py` 的 `_write_blob()`。
+3. **两次服务会话之间必须冷却**：同一次插线里隔几秒开第二个会话，认证能过但随后 USB 端点必掉
+   （`[Errno 32] Pipe error` / `[Errno 19] No such device`，相机 PID 在 0x096F / 0x0E76 之间反复跳），
+   文件会停成「前半新、后半零」的撕裂状态。间隔 50–60 秒再连则稳定。
+   修在 `src/a6700win/cp.py` 的 `SESSION_GAP`（默认 50 s，可用 `POWERFUL6700_SESSION_GAP` 覆盖）。
+4. 端点坏掉之后只能**物理拔插**或关机重启才能恢复；`_recover_service_mode` 救不回来
+   （PID 停在 0x096F 时会报 `service-mode device did not appear (expected 0x0336)`）。
+
+## CP 色度还原与「关机等待」实测（2026-10-25 真机）
+
+- 事故现场：菜单文字改回之后用户发现「滤镜没回去」。诊断：CP 单元 `0x02A40001` 与出厂副本
+  `72d3da868cc0` 差 **57 字节**（bank 1 VV 23 B、bank 4 NT 2 B、bank 6 PT 3 B、bank 14 VV2 29 B），
+  `/setting/BACKUP.BIN` @0x1B2140 的副本与内存完全相同（`b0cab23b`）——**文字在 `/usr`、颜色在 CP 单元，两处独立坏**。
+- 写回 8192 字节整单元 → 回读 `72d3da86…` 一致；但**关机后立刻开机，内存与 BACKUP 都退回 `b0cab23b`**。
+- 重做一次：写内存出厂值 → **正常关机等 7 分钟再开机** → 内存与 BACKUP 两处都是 `72d3da86…`，
+  整单元 0 字节差异。→ 落盘发生在关机流程里且需要时间，**等满 1 分钟是必要条件**，
+  断电或立刻开机会丢。界面与文档都按这个措辞写。
+
+## 菜单文字：离线回归（0.3.3 之前）
+
+已在无相机的条件下确认的：
+
+- 出厂资源 `string_simplifiedchinese_f.uxc`：145,612 B，
+  sha256 `fe263360c15b5530508bf7b098c96ec39cd4c38536b23653d15e6ea977b80e42`（2026-10-23 备份）；
+  解码得 4,785 条记录，四条目标外观各有两条记录（PT `0x021C6654`/`0x021C6F8B`、
+  NT `0x021C6434`/`0x021C7002`、VV `0x021C687B`/`0x021C6F80`、VV2 `0x021C689A`/`0x021C6F4D`）。
+- 离线改名 8 条记录 → 文件 145,676 B（+64），二次执行幂等（`changes == []`、字节不变）；
+  把四条改回短名后重新得到 145,612 B 且 sha256 与出厂逐字节相同。
+  **这是实测行为，不是承诺**：无损回滚依赖写入前存下的整份基线，界面文案照这个说。
+- 写入路径的假设备回归（`tests/test_looknames.py` 的 `_FakeDevice`）：apply → 设备字节等于
+  `rename_all` 结果、写前自动落基线；二次 apply 不写盘；restore 走 `mode=baseline` 后设备字节
+  逐字节回原样；无基线时走 `mode=labels` 且字节恰好回原样。`pytest tests -q` → 86 passed / 1 skipped。
+- 冻结包：`dist/Powerful6700/Powerful6700.exe`（0.3.3）自检九项 OK，`--render-pages` 能构造
+  含「菜单文字」卡片的外观页；PYZ 里 `a6700win.looknames` / `a6700win.uxc` 均存在，
+  且两个模块的字节码里都能找到 `labels-factory` 分支。
+
+未验证（真机，必须接相机）：
+
+1. ~~中文方案在菜单里的实际显示宽度~~ —— 2026-10-25 真机已跑：写入 145,692 B（8 条记录），
+   用户确认「文字没问题」，四个槽位显示 富士CC / 富士NC / 理光正片 / 理光负片；
+2. 断电正好落在 `write_block` 中间时，文件停在半截（ext2 没有事务）。这一条**已经真实发生过一次**
+   （2026-10-25 16:0x，会话间隔太短导致端点掉线），靠出厂基线整份写回修好了；
+   程序现在的对策是「写前自动存基线 + 还原时整份覆盖」，不是「永不发生」。
+
+## 只读检查报 `状态：04000010`（2026-10-25 排障，未定位到可复现条件）
+
+- 现象：界面「只读检查」失败，错误 `文件写入或载荷执行失败，状态：04000010`，
+  `写操作=否`、`设备访问=是`。这串来自 `usb/backend.py:184` 的 `_file`，即相机对
+  `0x4010`（配置）或 `0x4007`（载荷）暂存返回了 4 字节状态，原始字节 `04 00 00 10`
+  → 小端 u32 = **0x10000004**，与已知的 `0x10000006`（文件不存在）同族。
+- 源码侧复现不出来：同一台相机、同一份代码，`.data/scratch/live_inspect_steps.py` 逐步发
+  `0x4010` / `0x4007` 均返回 `00000000`；`live_session_reuse.py` 在**一个会话里连读 3 次**
+  也全部成功（含闲置 90 秒后再读）；`.data/scratch/live_gui_inspect.py` 走完整 GUI 路径
+  （`check_environment → acknowledge_notice → begin_preparation → confirm_preparation →
+  reserve("inspect") → run_reserved`）得到「检查完成：预计修改 0 字节／0 个扇区」。
+  → 当时相机刚从多次掉线里恢复，判断是一次性的设备侧拒绝，不是代码分支问题。
+- 本版做的事（不是「修好」，是让它下次能被看懂）：`_windows_backend_file` 现在报出
+  **是哪一步**（`配置写入（SET_FILE2）` / `载荷写入（SET_FILE）`）、file_id、状态字与含义，
+  并给出恢复步骤（拔线 → 关机 → 取电池约 1 分钟 → 装回 → 重连 MSC）。
+- 观察到的旁证：`0x10000004` 出现的那段时间，正是同一天多次「同会话写 CP + 写 145 KB 文件」
+  掉线之后；取电池冷启 1 分钟之后同类写入一次成功。

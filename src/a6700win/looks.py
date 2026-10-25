@@ -13,11 +13,14 @@
 - 只动 4 条记录（bank 1/4/6/14）；写前后逐条比对，其它记录有任何变化都报告；
 - 写完立刻回读，不一致直接报失败，不重试；
 - 只改 RAM，不碰 flash；要持久必须让相机正常关机一次（它会自己写 BACKUP.BIN）。
+  2026-10-25 真机实测：关机后立刻开机，改动不会落盘；关机后等满 1 分钟再开机，
+  内存与 BACKUP.BIN 两处都是新值。所以界面明确要求「关机后等一会儿再开」。
 """
 from __future__ import annotations
 
 import hashlib
 import json
+from contextlib import contextmanager
 from pathlib import Path
 
 from . import cp, paths
@@ -94,12 +97,26 @@ def changed_banks(before: bytes, after: bytes, targets: set[int]) -> list[int]:
             if bank not in targets and record(before, bank) != record(after, bank)]
 
 
-def read_state(progress=lambda message: None) -> dict:
+@contextmanager
+def _session(progress, channel):
+    """调用方给了已认证通道就复用，否则自己认证一次并保证退出服务模式。
+
+    同一页要读颜色又要读菜单文字时，两次认证会让相机来回切换 0x0E76/0x0336，
+    慢且容易卡在服务模式，所以这里允许把通道传进来。
+    """
+    if channel is not None:
+        yield channel
+        return
+    with cp.session(progress) as opened:
+        yield opened
+
+
+def read_state(progress=lambda message: None, channel=None) -> dict:
     """只读：报告四条记录现在处于哪种状态。"""
     looks = profile()
-    with cp.session(progress) as channel:
+    with _session(progress, channel) as opened:
         progress("读取 CP 色度单元…")
-        unit = channel.read_unit(UNIT)
+        unit = opened.read_unit(UNIT)
     rows = []
     for item in looks:
         rows.append({
@@ -114,10 +131,10 @@ def read_state(progress=lambda message: None) -> dict:
     return {"looks": rows, "sha256": hashlib.sha256(unit).hexdigest()}
 
 
-def _write(looks: list[dict], key: str, progress) -> dict:
-    with cp.session(progress) as channel:
+def _write(looks: list[dict], key: str, progress, channel=None) -> dict:
+    with _session(progress, channel) as opened:
         progress("读取当前的 CP 色度单元…")
-        unit = channel.read_unit(UNIT)
+        unit = opened.read_unit(UNIT)
         target = unit
         for item in looks:
             target = _splice(target, item, key)
@@ -125,15 +142,18 @@ def _write(looks: list[dict], key: str, progress) -> dict:
             progress("四条记录已是目标状态，无需写入。")
         else:
             progress("写入色度记录…")
-            channel.write_unit(UNIT, target)
+            opened.write_unit(UNIT, target)
         progress("回读校验…")
-        after = channel.read_unit(UNIT)
+        after = opened.read_unit(UNIT)
     if after != target:
         diff = sum(1 for a, b in zip(after, target) if a != b)
         raise LooksError("回读不一致：" + str(diff) + " 个字节不同；请重启相机后再试，不要重复写入。")
     moved = changed_banks(unit, after, {item["bank"] for item in looks})
     if moved:
         progress("注意：这些与本页无关的记录也变了：bank " + str(moved))
+    if target != unit:
+        progress("要让它跨关机保留：正常关机后等满 1 分钟再开机。相机在关机流程里把"
+                 "内存写进 /setting/BACKUP.BIN，写盘还没结束就立刻开机，改动会丢。")
     rows = []
     for item in looks:
         rows.append({
@@ -151,11 +171,11 @@ def _write(looks: list[dict], key: str, progress) -> dict:
     }
 
 
-def apply(progress=lambda message: None) -> dict:
+def apply(progress=lambda message: None, channel=None) -> dict:
     """写入配方。"""
-    return _write(profile(), "record_hex", progress)
+    return _write(profile(), "record_hex", progress, channel)
 
 
-def restore(progress=lambda message: None) -> dict:
+def restore(progress=lambda message: None, channel=None) -> dict:
     """把四条记录还回出厂值（其它记录一律不碰）。"""
-    return _write(profile(), "factory_hex", progress)
+    return _write(profile(), "factory_hex", progress, channel)

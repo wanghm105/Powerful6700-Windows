@@ -55,6 +55,7 @@ _PATCH_NAMES = (
     "controller.reserve",
     "operations._execute_session",
     "operations._restore_session",
+    "usb.backend.UsbBackend._file",
     "device_profile.inspect_sectors",
     "operations.inspect_sectors",
     "controller.available_backups",
@@ -200,6 +201,47 @@ def _wrap_session(original):
     return session
 
 
+# 0x4010 = SET_FILE2（配置），0x4007 = SET_FILE（载荷），0x4008 = EXECUTE。
+_FILE_STEPS = {0x4010: "配置写入（SET_FILE2）", 0x4007: "载荷写入（SET_FILE）"}
+
+
+# 相机对临时文件操作返回的状态字（小端 u32）。0x10000004 是 2026-10-25 真机
+# 见过的一次：读请求的配置/载荷暂存被拒，界面只看到「状态：04000010」。
+_KNOWN_STATUS = {
+    0x10000004: "，相机侧含义是临时文件操作被拒（通常是上一次会话没有干净结束）",
+    0x10000006: "，相机侧含义是文件不存在",
+}
+
+
+def _status_text(body: bytes) -> str:
+    if len(body) < 4:
+        return "相机返回了不完整的状态（%s）" % body[:16].hex()
+    value = int.from_bytes(body[:4], "little")
+    known = _KNOWN_STATUS.get(value, "")
+    return "状态 0x%08X%s（原始字节 %s）" % (value, known, body[:16].hex())
+
+
+def _windows_backend_file(self, command, ident, data):
+    """上游把三种失败写成同一句“文件写入或载荷执行失败”，界面看不出卡在哪一步。
+
+    这里保留同样的校验，只把步骤、命令号和相机状态写清楚；错误发生在固件写入之前，
+    相机里没有动任何功能字段，文案也直接告诉用户下一步该做什么。
+    """
+    from a6700_unlock.device_protocol import DeviceError
+
+    body = self._command(command, bytes([0, ident, 0]) + data)
+    if len(body) == 4 and body == b"\0" * 4:
+        return None
+    step = _FILE_STEPS.get(command, "文件写入 0x%04X" % command)
+    raise DeviceError(
+        "相机拒绝了%s（file_id=%d），%s；这次没有写入任何功能字段。"
+        "恢复办法：拔掉数据线 → 相机正常关机 → 取出电池约 1 分钟 → 装回开机 →"
+        "重新连 MSC 线，然后再检查一次。" % (step, ident, _status_text(body)))
+
+
+_windows_backend_file._a6700win_wrapped = True
+
+
 def _windows_available_backups(self):
     """物理模式下也列出本机功能状态备份。
 
@@ -340,6 +382,11 @@ def install() -> dict:
         if not getattr(current, "_a6700win_wrapped", False):
             setattr(operations, name, _wrap_session(current))
             applied.append("operations." + name)
+
+    # 相机拒绝配置/载荷时要说清是哪一步、状态码是多少。
+    if not getattr(backend.UsbBackend._file, "_a6700win_wrapped", False):
+        backend.UsbBackend._file = _windows_backend_file
+        applied.append("usb.backend.UsbBackend._file")
 
     _installed = True
     already = [name for name in _PATCH_NAMES if name not in applied]
