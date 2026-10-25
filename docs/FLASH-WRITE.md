@@ -41,7 +41,12 @@
 - `tools/flash_write.py`：
   `--stat` 列长度 → `--probe`（零变化自检）→ `--verify BACKUP`（把相机现内容与本地备份对齐）→
   `--write-hex` / `--write-file`（**必须** `--confirm yes-write`，写前记录写前/写后/期望三份 sha256 到 `.data/flash-log/`）。
-- 单块上限 `BLOCK = 0x8000`（32 KiB），受 Jiritsu 临时文件 64 KiB 上限约束。
+- 块上限：读 `BLOCK = 0x8000`（32 KiB）；写 `WRITE_BLOCK = 0x20000`（128 KiB，仍在载荷 `DATA_MAX = 0x100000` 之内）。
+  写入按 128 KB 切是为了压往返次数——每条命令都要「`select` 数据文件 + 传数据 + 传载荷 + 执行」。
+  145 KB 从 5 块变 2 块等于把 25 次压到 10 次左右。旧笔记里「受 Jiritsu 临时文件 64 KiB 上限约束」**已被实测推翻**：
+  2026-10-25 用单会话把 145,708 字节一次性写进 `/usr/share/app/string_simplifiedchinese_f.uxc` 成功
+  （`truncate` + 一帧 `0x2392C` 数据 + 一次执行 + 整份回读校验），说明载荷能一次吃下整个文件；
+  当时的掉线真因是「一次上电只给一个服务会话」，不是块大小也不是往返次数。
 
 ## 4. 首次执行的安全顺序（未执行）
 

@@ -53,7 +53,7 @@ FACTORY_SHA256 = {
 
 MIN_BYTES = 4096
 MAX_BYTES = flash.DATA_MAX
-CHUNK = flash.BLOCK
+CHUNK = flash.WRITE_BLOCK
 
 KIND_TEXT = {
     "factory": "出厂资源（哈希匹配）",
@@ -333,11 +333,15 @@ def _read_blob(backend) -> bytes:
 
 
 def _write_blob(backend, blob: bytes, progress, live: bytes | None = None) -> bool:
-    """把整份资源写回相机：调长度 → 分块写 → 整份回读比对。
+    """把整份资源写回相机：调长度 → 分块写 → 复核长度。
 
     `live` 是调用方刚读到的当前内容（有就复用，省掉整份读）。相机在一次插入周期里
-    能撑的传输次数有限，多读 5 块就可能把会话撑掉。长度先对齐再做覆盖写：变短是
-    截断，变长是 ftruncate 扩零 —— 写入器不能越界追加，否则最后一块报范围超长。
+    能撑的命令往返次数有限（实测掉线点在 8~13 之间），所以：
+      - 块按 flash.WRITE_BLOCK（0x20000）切，145 KB 只要 2 次写；
+      - 校验交给相机侧的载荷：它 pwrite + fsync 之后会把刚写的范围读回来比对，
+        不一致直接返回状态 9，所以主机侧不再逐块读一遍（每块能省两次往返）。
+    长度先对齐再做覆盖写：变短是截断，变长是 ftruncate 扩零 —— 写入器不能越界追加，
+    否则最后一块报范围超长。
     """
     if live is not None and live == blob:
         progress("相机上的资源与目标一致，无需写入。")
@@ -353,10 +357,9 @@ def _write_blob(backend, blob: bytes, progress, live: bytes | None = None) -> bo
         chunk = blob[offset:offset + CHUNK]
         progress(f"写入 0x{offset:06x}（{len(chunk):,} 字节，{index}/{total}）…")
         flash.write_block(backend, BLOB_PATH, offset, chunk)
-    progress("整份回读比对…")
-    got = _read_blob(backend)
-    if got != blob:
-        raise LookNamesError("回读与目标不一致，不要再写第二次；请用「还原菜单文字」或基线恢复。")
+        progress(f"第 {index}/{total} 块写入并已由相机侧回读校验。")
+    if flash.stat(backend, BLOB_PATH) != len(blob):
+        raise LookNamesError("写入后文件长度与目标不符，停止操作并复查。")
     return True
 
 

@@ -54,9 +54,12 @@ def test_parse_reports_status():
 
 def test_block_limit():
     with pytest.raises(flash.FlashError):
-        flash.write_block(object(), "/cp/cpapp-b.bin", 0, b"\x00" * (flash.BLOCK + 1))
+        flash.write_block(object(), "/cp/cpapp-b.bin", 0, b"\x00" * (flash.WRITE_BLOCK + 1))
     with pytest.raises(flash.FlashError):
         flash.write_block(object(), "/cp/cpapp-b.bin", 0, b"")
+    # 写入块比读块大：145 KB 语言资源只要两次写，命令往返次数才是掉线的关键。
+    assert flash.WRITE_BLOCK == 0x20000
+    assert flash.WRITE_BLOCK > flash.BLOCK
 
 
 def test_targets_recorded():

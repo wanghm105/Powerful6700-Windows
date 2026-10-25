@@ -31,6 +31,10 @@ HEADER = 28
 PATH_MAX = 192
 DATA_MAX = 0x100000
 BLOCK = 0x8000
+# 单次写入的大小上限。相机侧 Senser 写窗口是 133,120 字节，载荷内部按 0x20000 分块，
+# 所以 0x20000 是「一次命令写进去」的安全上限。块越大，一次会话里的命令往返越少 ——
+# 145 KB 语言资源从 5 次写压到 2 次，实测掉线点就在第 8~13 次往返上。
+WRITE_BLOCK = 0x20000
 DATA_PATH = "/tmp/jiritsu/tmmc.dat"
 SERVICE_FUNCTION = 0x40
 
@@ -201,11 +205,11 @@ def probe(backend, path: str, offset: int = 0, length: int = 512,
 
 def write_block(backend, path: str, offset: int, data: bytes, elf: bytes | None = None,
                 sequential: bool = False) -> dict:
-    """写一个不超过 BLOCK 的块：先传数据文件，再让载荷写入并回读。"""
+    """写一个不超过 WRITE_BLOCK 的块：先传数据文件，再让载荷写入并回读。"""
     if not data:
         raise FlashError("空块不可写")
-    if len(data) > BLOCK:
-        raise FlashError(f"单块最多 {BLOCK} 字节（当前 {len(data)}）")
+    if len(data) > WRITE_BLOCK:
+        raise FlashError(f"单块最多 {WRITE_BLOCK} 字节（当前 {len(data)}）")
     elf = elf if elf is not None else payload()
     channel = backend.channel
     dump.select(channel, DATA_PATH)
