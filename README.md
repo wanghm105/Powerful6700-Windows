@@ -101,6 +101,7 @@ python tools/looks_apply.py --confirm yes-write   # 相机先切到 USB 存储�
 - [功能状态](#功能状态)
 - [现有功能逐项说明](docs/FEATURES.md)
 - [下载与系统要求](#下载与系统要求)
+- [致谢](#致谢)
 - [开始前必读](#开始前必读)
 - [操作指南](#操作指南)
   - [第 1 步：解压并启动](#第-1-步解压并启动)
@@ -113,7 +114,6 @@ python tools/looks_apply.py --confirm yes-write   # 相机先切到 USB 存储�
 - [验证状态](#验证状态)
 - [命令行与开发](#命令行与开发)
 - [来源与许可](#来源与许可)
-- [致谢](#致谢)
 
 ## 这个项目和上游是什么关系
 
@@ -147,19 +147,9 @@ python tools/looks_apply.py --confirm yes-write   # 相机先切到 USB 存储�
 
 ## 截图
 
-以下截图用同一份发布包渲染，界面和文案都是实际内容（截图时没有连相机）。自定义外观页的截图在上面那一节。
+主界面（功能管理页）。和上面「自定义外观」那一张一样，都是同一份发布包渲染的实际界面，截图时没有连相机。
 
-| 操作前须知 | 驱动准备 |
-| --- | --- |
-| ![操作前须知](docs/images/notice.png) | ![驱动准备](docs/images/driver.png) |
-
-| 相机准备 | 功能管理 |
-| --- | --- |
-| ![相机准备](docs/images/preparation.png) | ![功能管理](docs/images/home.png) |
-
-| 操作结果 | 关于与诊断 |
-| --- | --- |
-| ![操作结果](docs/images/result.png) | ![关于与诊断](docs/images/about.png) |
+![功能管理](docs/images/home.png)
 
 ## 下载与系统要求
 
@@ -170,6 +160,13 @@ python tools/looks_apply.py --confirm yes-write   # 相机先切到 USB 存储�
 - SHA-256：`93761bfc65c196283a20506f0177088bcb0d055ffbe487baf3d491a2017ab366`（v0.3.4-win.1）
 - 首次把相机绑到 WinUSB 需要**管理员权限**，建议右键「以管理员身份运行」。
 - 也可以从源码运行：建虚拟环境 → `python main.py`，或直接双击 `启动.cmd`；步骤与依赖清单见 [docs/BUILD.md](docs/BUILD.md) 与 [requirements.txt](requirements.txt)。
+
+## 致谢
+
+- [xyzhangxin](https://github.com/xyzhangxin)：上游 Powerful6700，固件字段表、写入事务与全部风险控制逻辑都来自这里。
+- [QAQLeonard](https://github.com/QAQLeonard)：A7C II Tools（Windows/macOS 桌面工具）是本项目在「产品完整度」上的参照。
+- [pbatard](https://github.com/pbatard)：libwdi／Zadig，Windows 驱动绑定这一环靠它。
+- [PySide6](https://www.qt.io/qt-for-python)、[PyUSB](https://github.com/pyusb/pyusb)、[libusb](https://libusb.info/)、[PyInstaller](https://pyinstaller.org/) 及 [Sony-PMCA-RE](https://github.com/ma1co/Sony-PMCA-RE)。
 
 ## 开始前必读
 
@@ -307,10 +304,3 @@ A：不需要，冻结包自带运行时。源码运行才需要 Python 3.10+，
 - 本项目同样以 **GPL-3.0-only** 发布：分发本项目的二进制时，请同时提供对应源码（即本仓库同 tag 的代码）。
 - 本项目是**非官方**工具，与 Sony 及上游作者均**无隶属关系、也未获其背书**。真实固件修改存在变砖、设置或数据丢失的风险，请自行评估。
 - 本项目不含任何固件镜像、密钥、序列号或 ProductInfo 原文；仓库里的转储工具只处理你自己从自己相机读出的文件。
-
-## 致谢
-
-- [xyzhangxin](https://github.com/xyzhangxin)：上游 Powerful6700，固件字段表、写入事务与全部风险控制逻辑都来自这里。
-- [QAQLeonard](https://github.com/QAQLeonard)：A7C II Tools（Windows/macOS 桌面工具）是本项目在「产品完整度」上的参照。
-- [pbatard](https://github.com/pbatard)：libwdi／Zadig，Windows 驱动绑定这一环靠它。
-- [PySide6](https://www.qt.io/qt-for-python)、[PyUSB](https://github.com/pyusb/pyusb)、[libusb](https://libusb.info/)、[PyInstaller](https://pyinstaller.org/) 及 [Sony-PMCA-RE](https://github.com/ma1co/Sony-PMCA-RE)。
