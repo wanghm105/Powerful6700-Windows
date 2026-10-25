@@ -51,12 +51,14 @@
 
 ### 3.1 路径
 
+下表用 `<repo>` 表示本仓库根目录，`<workspace>` 表示它在磁盘上的上级目录。
+
 | 用途 | 路径 |
 |---|---|
-| 工程（写） | `D:\DSH Desktop\Project\Powerful6700Win` |
-| 上游只读参考 | `D:\DSH Desktop\Project\refs\a6700-powerful` |
-| A7C2 只读参考 | `D:\DSH Desktop\Project\refs\a7c2-fl23` |
-| 固件/素材/备份 | `D:\DSH Desktop\Project\firmware`（`cp/` `uxc/` `lut/` `photos/`） |
+| 工程（写） | `<repo>` |
+| 上游只读参考 | `<workspace>/refs/a6700-powerful` |
+| A7C2 只读参考 | `<workspace>/refs/a7c2-fl23` |
+| 固件/素材/备份 | `<workspace>/firmware`（`cp/` `uxc/` `lut/` `photos/`） |
 | 运行时数据 | `.data`（可用 `POWERFUL6700_DATA` 覆盖） |
 | 基线与日志 | `.data/looknames/`、`.data/backups/`、`.data/run/`、`.data/flash-log/` |
 | 冻结包 | `dist/Powerful6700/Powerful6700.exe` |
@@ -72,10 +74,10 @@
 ### 3.3 每次跑命令的前置
 
 ```powershell
-cd 'D:\DSH Desktop\Project\Powerful6700Win'
+cd '<repo>'
 $env:PYTHONIOENCODING='utf-8'
-$env:PYTHONPATH='D:\DSH Desktop\Project\Powerful6700Win\src'
-$env:POWERFUL6700_DATA='D:\DSH Desktop\Project\Powerful6700Win\.data'
+$env:PYTHONPATH='<repo>\src'
+$env:POWERFUL6700_DATA='<repo>\.data'
 .\.venv\Scripts\python.exe <脚本>
 ```
 
@@ -319,10 +321,10 @@ RMS = √(mean((s·m − t)²))      # 逐档误差
 
 - 写入：`uxc.rename_all` 整块后移 + 重写索引表 → `flash.truncate` 到新长度 → `0x8000` 分块写 → 整份回读比对
 - 还原三档：① 有出厂基线 → 逐字节写回（`mode="baseline"`）；② 无基线 → 把记录改回短名（`mode="labels"`），若回写后哈希恰与出厂一致则自动登记为基线（`mode="labels-factory"`）；③ 拒绝写入
-- 基线库 `.data/looknames/`（6 份，best = 出厂 145,612 / `fe263360…`，source `string_simplifiedchinese_f.uxc.20261023T233448Z.bin`）；source 目录 `D:\DSH Desktop\Project\firmware\uxc`
+- 基线库 `.data/looknames/`（6 份，best = 出厂 145,612 / `fe263360…`，source `string_simplifiedchinese_f.uxc.20261023T233448Z.bin`）；source 目录 `<workspace>/firmware/uxc`
 - **`build.ps1` 清 dist 后必须重新 seed**：
   ```powershell
-  $env:POWERFUL6700_DATA='D:\DSH Desktop\Project\Powerful6700Win\dist\Powerful6700\.data'
+  $env:POWERFUL6700_DATA='<repo>\dist\Powerful6700\.data'
   .\.venv\Scripts\python.exe -c "import sys;sys.path.insert(0,'src');from a6700win import looknames;print(looknames.auto_import())"
   ```
 - 恢复手法（掉线撕裂时）：`live_repair.py` 只重写差异块（先读全 5 块 → 逐块比 → 只写不同的块 → 只回读这些块）

@@ -1,7 +1,7 @@
 # A6700 破解重要突破记录
 
 > 约定：从此以后每有重要突破都追加到本文件（用户 m03543 要求）。
-> 项目根：`D:\DSH Desktop\Project`；工具在 `Powerful6700Win\tools`；固件镜像在 `firmware`。
+> 项目根：本仓库（`Powerful6700Win`）；工具在 `tools/`；固件镜像与素材在仓库外的 `<workspace>/firmware`。
 
 ## 2026-10-24 · 突破 1：CP 单元可读可写（19 个单元全部打通）
 
