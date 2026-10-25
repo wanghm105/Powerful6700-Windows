@@ -9,14 +9,24 @@
    - `LICENSE`（GPL-3.0 全文）
    - `NOTICE`（上游版权与免责声明）
    - `THIRD_PARTY_NOTICES.md`（PyUSB / libusb / PySide6 / libwdi 等）
-2. **改动可追溯**：本项目自己的代码全部在 `src/a6700win/`（约 4,000 行），对上游的 22 处
+2. **改动可追溯**：本项目自己的代码全部在 `src/a6700win/`（约 4,000 行），对上游的 30 处
    修改逐条写在 `docs/ARCHITECTURE.md`；与上游的差异说明写在 `docs/UPSTREAM-NOTES.md`。
    GPL-3.0 要求分发二进制时提供对应源码——发布 zip 时把同一提交的源码包一起放出来。
 3. **不提交运行期数据**：`.gitignore` 已排除 `.venv/`、`build/`、`dist/`、`.data/`、
    `wheelhouse/`、`__pycache__/`、`*.pyc`、`.pytest_cache/`。`.data/` 里有备份文件
    （含机身状态）、运行日志与下载的 libwdi 组件，**绝不能**进仓库。
-4. **不含本机路径**：首次发布前确认 `git grep -nE 'D:.*DSH|C:.*Users'` 为空。
-5. **免责声明可读**：README 写明非官方、非 Sony、风险与适用范围（仅 A6700 + 固件 2.00）。
+4. **不上传固件、私人备份、密钥、ProductInfo、照片、原始抓包、完整日志**（项目所有者要求）。
+   仓库与发布 zip 都适用：机身固件文件（`BODYDATA*`）、`/setting` 备份、语言资源原件、
+   相机实拍 RAW/JPEG、USB 抓包、逐帧日志都只留在本机 `.data/` 或仓库之外。
+   发布前跑一次扫描，它把这条规则变成可执行检查：
+
+   ```bash
+   .venv/Scripts/python.exe tools/check_publish.py --zip
+   ```
+
+   干净时输出「干净：…」并返回 0；有发现会逐条列出（路径 + 原因）并返回 1。
+5. **不含本机路径**：首次发布前确认 `git grep -nE 'D:.*DSH|C:.*Users'` 为空。
+6. **免责声明可读**：README 写明非官方、非 Sony、风险与适用范围（仅 A6700 + 固件 2.00）。
 
 ## 首次发布
 

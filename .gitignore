@@ -17,3 +17,21 @@ WHM*_1.JPG
 photo/
 ref-*.png
 *.ARW
+
+# 不上传：固件、私人备份、密钥、ProductInfo、照片、原始抓包、完整日志
+firmware/
+BODYDATA*
+BACKUP.BIN
+ProductInfo*
+*.a6700backup
+*.uxc
+*.uxc.*
+unit-*.bin
+*.pcap
+*.pcapng
+*.pem
+*.key
+*.p12
+*.pfx
+inspect-*.json
+a6700audit-*
