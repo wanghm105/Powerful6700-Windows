@@ -12,16 +12,17 @@
 - HEAD `4a3e30c`（其上还有 `cd09525`、`3845574` 两条 docs 提交）。工作树 **66 项未提交**，`git diff --stat -- src tests docs README.md` = 31 文件 +2,534 / −368。
 - `src/a6700win/version.py:4` → `APP_VERSION = "0.3.9-probe5"`。
 - 未跟踪的关键文件：`docs/KNOWN-AND-GUESSES.md`（本文件）、`docs/FL23-FULL-RECORD.md`、`docs/PUBLISH-RISK-REVIEW.md`、`docs/FTP-KNOWN-ISSUE.md`、`docs/DIAGNOSTICS.md`、`src/a6700win/diagnostics.py`、`src/a6700win/notices.py`、`tests/test_diagnostics.py`、`tools/fl23_*.py`。
-- 从未做过任何一次 commit（用户明确要求先不提交）。
+- **2026-10-27 17:07 已提交** `dda0c0d`（44 文件 +5,728/−450，含 0.3.8 诊断层与 0.3.9-probe5 全部改动），tag `v0.3.9-probe5-win.1`，已推送 origin/main。tools/ 下新增的写机脚本按 P0-C 没有入库。
 
 ### 1.2 可发布物
 - `.data/tmp/dist-probe5c/Powerful6700-0.3.9-probe5.exe`，**48,074,201 B**，sha256 **4e8232965a5eb4245e9d77c0eb76a1bf750450f3ea6f5cac647a53988cde8c04**。
 - 冻结自检：九项 OK、`version 0.3.9-probe5`、`ok: true`。注意 `--json` 后面要跟路径（不是开关），且必须带 `POWERFUL6700_DATA` 与**绝对** `TEMP/TMP`，否则会挂住不返回。
 - 已作废的两个包：`3e92fa9b…`（48,075,450 B，无重挂修复）、`1c2347…`（48,072,155 B，文案还吓人）。两个都没发布过。
+- **已发布**（2026-10-27 17:10）：Pre-release `v0.3.9-probe5-win.1`，GitHub 记录的 asset digest = `4e8232…`（与本地一致）。
 
 ### 1.3 线上
 - 仓库 `wanghm105/Powerful6700-Windows`。Latest = `v0.3.8-win.1`（75 下载）；0.3.7(40) / 0.3.4(8) / 0.3.2(17) / 0.3.1(6) / 0.2.0(14)。
-- Pre-release：probe3(8) / probe2(15) / probe1(9)，**三个 tag 都指向 `4a3e30c`**（所以现在直接发 probe5 的 exe 会无法复现源码）。
+- Pre-release：probe5（2026-10-27 新发，tag 指向 `dda0c0d`）/ probe3(8) / probe2(15) / probe1(9)；**probe1–probe3 三个 tag 都指向 `4a3e30c`**（所以那三个 exe 无法从源码复现）。
 - `v0.3.9-probe4r-win.1` 的 release 与 tag 已于 2026-10-27 17:20 用 `gh release delete --yes --cleanup-tag` 删除。
 - issues #1–#4 全部 open：#1 `yianZHK`（结构守卫 260 块里有 1 块不符）、#2 `ryanzhu0813`、#3 `机友 E`、#4 `jmr60669005`（后三个都是 0x10000004）。
 

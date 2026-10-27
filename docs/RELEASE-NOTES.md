@@ -36,7 +36,8 @@ Sony A6700 工具 [Powerful6700](https://github.com/xyzhangxin/sony-a6700-powerf
 - 版本回文是 4 字节（06 00 00 10 = 6.00），与状态码 0x10000004 是同一串字节——所以日志里同时写出两种读法，免得把状态码当版本号。
 - 新增 8 例测试（版本回文四种读法、MOUNT 救援、MOUNT 被拒进最终文案、重挂只试一次）；整套 pytest tests -q → **141 passed / 1 skipped**。
 - 新增 11 例测试（版本回文四种读法、MOUNT 救援、MOUNT 被拒进最终文案、重挂只试一次、删完 libJit.so 立刻重挂、重挂失败只提示不中断）；整套 pytest tests -q → **144 passed / 1 skipped**。
-- 单文件 exe：48,074,201 B / sha256 `4e8232…8c04`（完整值在 `docs/AI-HANDOFF.md` §24.5），冻结自检九项全过。
+- 单文件 exe：48,074,201 B / sha256 `4e8232965a5eb4245e9d77c0eb76a1bf750450f3ea6f5cac647a53988cde8c04`，冻结自检九项全过。
+- **2026-10-27 17:10 已发布**：Pre-release `v0.3.9-probe5-win.1`（源码提交 `dda0c0d`，tag 与 exe 同批推送）：https://github.com/wanghm105/Powerful6700-Windows/releases/tag/v0.3.9-probe5-win.1
 - **没在真机上跑过**：相机自 2026-10-26 起在等硬件修复，这一版全部是离线验证加合成通道。
 - 交接细节见 " + BT + "docs/AI-HANDOFF.md" + BT + " §24。
 

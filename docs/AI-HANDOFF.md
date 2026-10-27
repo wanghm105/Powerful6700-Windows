@@ -1190,6 +1190,7 @@ Windows 后端那条文件写入包装 `_windows_backend_file` 的失败分支�
 - 单文件 exe 已构建（未发布）：.data/tmp/dist-probe5/Powerful6700-0.3.9-probe5.exe， **48,075,450 B / sha256 3e92fa9b3425356a4c60c6e4401e6cc5ab89dea27e1f87e17bb2e8d89811c05d**；冻结自检九项全过、`version 0.3.9-probe5`。
 - `pytest tests -q`（junit 读数为准）→ **144 passed / 1 skipped**（含 libJit.so 重挂那一版；0.3.8 时是 109）。
 - 单文件 exe（含 libJit.so 重挂修复 + 文案软化）：.data/tmp/dist-probe5c/Powerful6700-0.3.9-probe5.exe， **48,074,201 B / sha256 4e8232965a5eb4245e9d77c0eb76a1bf750450f3ea6f5cac647a53988cde8c04**；冻结自检九项全过、`version 0.3.9-probe5`；拆 PYZ 复核过 `_probe_version`/`_remount_jiritsu`/0x400D/0x4002 与新文案都在包里、旧的「会因此卸载」「马上重挂」已不在包里（更早的 3e92fa9b…、1c2347… 两个包全部作废，都没发布过）。
+- **发布记录（2026-10-27 17:10）**：源码提交 `dda0c0d`（44 文件 +5,728/−450）与 tag `v0.3.9-probe5-win.1` 已推送，Pre-release 已上传上面的 exe；GitHub 侧记录的 asset digest 就是同一个 sha256。tools/ 下新增的写机脚本按 PUBLISH-RISK-REVIEW P0-C **没有入库**。
 - 发布侧：`v0.3.9-probe4r-win.1` 的 release 与 tag 已于 2026-10-27 17:20 删除（`gh release delete --yes --cleanup-tag`）；probe1–probe3 仍在线上。
 - `src/a6700win/version.py` = 0.3.9-probe5；**未发布、未提交**（工作树里所有改动都还没 commit）。
 

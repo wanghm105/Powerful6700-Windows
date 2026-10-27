@@ -72,7 +72,8 @@ Sony A6700（固件 2.00）工具的 Windows 版，对标 A7C2 那套项目的�
 - probe4r 的 release 与 tag 已从 GitHub 删除；probe1–probe3 仍在线上。
 - 顺手修掉一处旧账：guards.install() 返回的补丁名多了 a6700_unlock. 前缀，与 _PATCH_NAMES 不一致。
 - `pytest tests -q` → 141 passed / 1 skipped（0.3.8 时 109）。未打包、未发布。
-- `pytest tests -q` → 144 passed / 1 skipped（0.3.8 时 109）。单文件 exe 已重建（48,074,201 B / sha256 4e8232…8c04），界面文案统一改成「清理 + 把临时目录重新挂上」，不再出现「卸载分区」这类说法。**未提交、未发布**。
+- `pytest tests -q` → 144 passed / 1 skipped（0.3.8 时 109）。单文件 exe 已重建（48,074,201 B / sha256 `4e8232…8c04`），界面文案统一改成「清理 + 把临时目录重新挂上」，不再出现「卸载分区」这类说法。
+- **已提交并发版**：提交 `dda0c0d`（44 文件 +5,728/−450），tag `v0.3.9-probe5-win.1`，Pre-release 已上传 exe：https://github.com/wanghm105/Powerful6700-Windows/releases/tag/v0.3.9-probe5-win.1
 
 ## 2026-10-26 · 0.3.8 诊断层（离线，没碰相机）
 
