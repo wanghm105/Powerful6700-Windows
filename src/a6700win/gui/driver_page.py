@@ -13,9 +13,9 @@ class DriverPage(Page):
     title = "驱动准备"
     step = 2
     subtitle = (
-        "Windows 需要把相机的 USB 接口绑定到 WinUSB，Python 才能通过 libusb 与相机通信。"
-        "本页仅在真实设备模式下使用；绑定过程需要管理员权限，且只针对索尼相机的 "
-        "0x047D / 0x0E76 / 0x0336 三个 PID。驱动组件随安装包附带，不需要联网。"
+        "这一步给相机装一个 Windows 认得的驱动，装完本程序才能跟相机说话。"
+        "装的时候要管理员权限，只动索尼相机的三个接口；驱动文件就在安装包里，不用联网。"
+        "只有「真实设备模式」才用得到这一页。"
     )
 
     def __init__(self, app, parent: QWidget | None = None):
@@ -37,11 +37,11 @@ class DriverPage(Page):
         self.state_card.add(self.wdi_path)
         root.addWidget(self.state_card)
 
-        self.device_card = Card("已识别的相机接口")
+        self.device_card = Card("找到的相机接口")
         self.device_box = QVBoxLayout()
         self.device_box.setSpacing(8)
         self.device_card.add_layout(self.device_box)
-        self.device_empty = QLabel("尚未扫描。")
+        self.device_empty = QLabel("还没查找。")
         self.device_empty.setObjectName("Muted")
         self.device_box.addWidget(self.device_empty)
         root.addWidget(self.device_card)
@@ -49,16 +49,16 @@ class DriverPage(Page):
         actions = QHBoxLayout()
         actions.setSpacing(10)
         actions.addStretch(1)
-        self.scan_button = QPushButton("扫描设备")
+        self.scan_button = QPushButton("查找相机")
         self.scan_button.setObjectName("Ghost")
         self.scan_button.clicked.connect(self._scan)
         actions.addWidget(self.scan_button)
-        self.download_button = QPushButton("下载驱动组件")
-        self.download_button.setToolTip("只有包内组件被安全软件删掉时才需要联网补装")
+        self.download_button = QPushButton("联网补装驱动")
+        self.download_button.setToolTip("只有包里的驱动文件被安全软件删掉时才需要。")
         self.download_button.setObjectName("Ghost")
         self.download_button.clicked.connect(self._download)
         actions.addWidget(self.download_button)
-        self.install_button = QPushButton("绑定 WinUSB")
+        self.install_button = QPushButton("给相机装驱动")
         self.install_button.setObjectName("Primary")
         self.install_button.clicked.connect(self._install)
         actions.addWidget(self.install_button)
@@ -74,17 +74,17 @@ class DriverPage(Page):
         admin = report.get("admin")
         self.pill_admin.set_state("管理员" if admin else "普通权限",
                                   theme.SUCCESS if admin else theme.TEXT_FAINT)
-        self.pill_wdi.set_state("组件就绪" if report.get("wdi") else "缺少组件",
+        self.pill_wdi.set_state("驱动文件就绪" if report.get("wdi") else "缺少驱动文件",
                                 theme.SUCCESS if report.get("wdi") else theme.WARNING)
         devices = report.get("devices") or []
         bound = [row for row in devices if row.get("winusb")]
         self.pill_devices.set_state(
-            f"{len(devices)} 个接口 · {len(bound)} 个已绑定" if devices else "未扫描",
+            f"找到 {len(devices)} 个接口 · {len(bound)} 个装好了" if devices else "还没查找",
             theme.SUCCESS if devices and len(bound) == len(devices) else theme.TEXT_FAINT)
 
         reset_layout(self.device_box)
         if not devices:
-            empty = QLabel("尚未扫描。" if not report else "没有发现索尼相机接口。")
+            empty = QLabel("还没查找。" if not report else "没找到索尼相机接口。")
             empty.setObjectName("Muted")
             self.device_box.addWidget(empty)
         for row in devices:
@@ -97,14 +97,14 @@ class DriverPage(Page):
             label = QLabel(str(row.get("label") or row.get("title") or ""))
             label.setObjectName("Muted")
             line.addWidget(label, 1)
-            service = str(row.get("service") or "无")
-            line.addWidget(Pill(f"服务：{service}", theme.SUCCESS if row.get("winusb") else theme.WARNING))
+            service = str(row.get("service") or "没装")
+            line.addWidget(Pill(f"驱动：{service}", theme.SUCCESS if row.get("winusb") else theme.WARNING))
             self.device_box.addLayout(line)
 
         if report:
             source = "随包附带" if report.get("wdi_bundled") else "已下载" 
             self.wdi_path.setText(
-                f"驱动组件（{source}）：{report.get('wdi_path', driver_mod.wdi_executable())}")
+                f"驱动文件（{source}）：{report.get('wdi_path', driver_mod.wdi_executable())}")
         else:
             self.wdi_path.setText("")
         self.install_button.setEnabled(bool(devices) and not snapshot.get("busy"))
@@ -112,20 +112,20 @@ class DriverPage(Page):
         self.download_button.setEnabled(not snapshot.get("busy") and not report.get("wdi"))
 
     def step_reason(self, snapshot: dict) -> str | None:
-        """没绑 WinUSB 就进下一步，只读检查只会报“找不到 MSC 相机”。"""
+        """没装驱动就进下一步，只读检查只会报“找不到 MSC 相机”。"""
         report = getattr(self.app, "driver_report", {}) or {}
         if not report:
-            return "先点「扫描设备」，确认相机接口已经绑定 WinUSB。"
+            return "先点「查找相机」，确认相机接口都装好驱动。"
         devices = report.get("devices") or []
         if not devices:
-            return "没发现索尼相机接口：接好数据线、把相机设成海量存储(MSC) 后重新扫描。"
+            return "没找到索尼相机接口：接好数据线、把相机设成海量存储（MSC），再点一次「查找相机」。"
         pending = [row for row in devices if not row.get("winusb")]
         if pending:
-            return "还有 %d 个相机接口没绑定 WinUSB，绑定后拔插一次数据线。" % len(pending)
+            return "还有 %d 个相机接口没装好驱动，装完拔插一次数据线。" % len(pending)
         return None
 
     def _scan(self) -> None:
-        self.app.run_task("扫描 USB 设备", lambda progress: driver_mod.scan(), self._scanned)
+        self.app.run_task("查找相机接口", lambda progress: driver_mod.scan(), self._scanned)
 
     def _scanned(self, report) -> None:
         self.app.driver_report = report or {}
@@ -136,7 +136,7 @@ class DriverPage(Page):
         def job(progress):
             return driver_mod.download_wdi(progress)
 
-        self.app.run_task("下载驱动组件", job, self._downloaded)
+        self.app.run_task("下载驱动", job, self._downloaded)
 
     def _downloaded(self, path) -> None:
         self.log.log(f"驱动组件已就绪：{path}")
@@ -152,7 +152,7 @@ class DriverPage(Page):
         def job(progress):
             return driver_mod.install(pids, progress)
 
-        self.app.run_task("绑定 WinUSB", job, self._installed)
+        self.app.run_task("给相机装驱动", job, self._installed)
 
     def _installed(self, result) -> None:
         result = result or {}

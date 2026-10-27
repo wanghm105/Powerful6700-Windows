@@ -57,3 +57,17 @@ QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts ./.venv/Scripts/python
 ```bash
 cd dist && powershell Compress-Archive -Path Powerful6700 -DestinationPath Powerful6700-Windows-x64.zip
 ```
+
+## 取证版单文件 exe（onefile）
+
+`packaging/Powerful6700.spec` 是 onedir，**单独一个 exe 跑不起来**（要旁边的 `_internal`）。0.3.9-probe1 那种「只发一个 exe」的版子另用 `.data/tmp/probe.spec`：datas 与 onedir 相同，去掉 `COLLECT`，把 `a.binaries` / `a.datas` 直接塞进 `EXE`。
+
+```bash
+.venv/Scripts/python.exe -m PyInstaller .data/tmp/probe.spec --noconfirm --clean \
+  --distpath .data/tmp/dist-probe --workpath .data/tmp/build-probe
+```
+
+- 体积 48,066,148 B（onedir 的 zip 是 47,983,337 B），构建约 41 秒；
+- 自检：`./.data/tmp/dist-probe/Powerful6700.exe --offline-self-test --json <路径>`，注意 `--json` 必须带路径，否则 argparse 报 `argument --json: expected one argument`；
+- 路径语义：`paths.project_root()` 冻结时 = **exe 所在目录**，所以 `.data` 与 `logs/` 落在 exe 旁边；只有 `paths.bundled_root()` 用 `_MEIPASS`；
+- 发布时把产物改名成 `Powerful6700-<版本>-probe1.exe` 当唯一资产，勾 Pre-release，不要加 zip。

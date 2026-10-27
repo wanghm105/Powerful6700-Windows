@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QSizePolicy, QToolButton, QVBoxLayout, QWidget,
 )
 
+from ..notices import notice_for
 from . import theme
 
 
@@ -197,6 +198,9 @@ class LogBox(QPlainTextEdit):
         self.setPlaceholderText("操作进度会显示在这里。")
 
     def log(self, message: str) -> None:
+        from .. import runlog
+
+        runlog.write(message)
         self.appendPlainText(message)
         bar = self.verticalScrollBar()
         bar.setValue(bar.maximum())
@@ -283,7 +287,7 @@ class SectionRow(QWidget):
 
         source = str(section.get("source_url") or "")
         if source and opener is not None:
-            link = DocLink("查看官方说明 ↗")
+            link = DocLink(str(section.get("link_text") or "查看官方说明 ↗"))
             link.setToolTip(source)
             link.clicked.connect(lambda _=False, url=source: opener(url))
             grid.addWidget(link, 2, 1, Qt.AlignLeft)
@@ -344,7 +348,10 @@ class FeatureRow(QFrame):
         super().__init__(parent)
         self.setObjectName("Inset")
         self.feature_id = str(feature.get("id", ""))
-        layout = QHBoxLayout(self)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(14, 10, 14, 10)
+        outer.setSpacing(4)
+        layout = QHBoxLayout()
         layout.setContentsMargins(14, 10, 14, 10)
         layout.setSpacing(12)
 
@@ -360,6 +367,16 @@ class FeatureRow(QFrame):
         self.tag = QLabel()
         self.tag.setObjectName("Faint")
         layout.addWidget(self.tag)
+
+        outer.addLayout(layout)
+
+        # catalog 的 limits 只在悬停时出现；会让用户卡住的边界用常驻灰字放在行下方。
+        self.notice = QLabel()
+        self.notice.setObjectName("Faint")
+        self.notice.setWordWrap(True)
+        self.notice.setIndent(2)
+        self.notice.setVisible(False)
+        outer.addWidget(self.notice)
 
         self.requires: list = []
         self.update_feature(feature)
@@ -379,6 +396,10 @@ class FeatureRow(QFrame):
         self.tag.setVisible(bool(verification))
         limits = feature.get("limits") or []
         self.setToolTip("\n".join(f"· {item}" for item in limits) if limits else "")
+        note = notice_for(self.feature_id)
+        if self.notice.text() != note:
+            self.notice.setText(note)
+        self.notice.setVisible(bool(note))
         self.requires = feature.get("requires") or []
         self.setEnabled(bool(feature.get("available", True)))
 

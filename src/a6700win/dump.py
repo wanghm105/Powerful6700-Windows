@@ -26,6 +26,14 @@ CMD_READ = 17
 CMD_REMOVE = 18
 STATUS_MISSING = 0x10000006
 SERVICE_FUNCTION = 0x40
+# category 0x1001 里还有两条我们从来没有发过的命令（t2r05/fx30-senser-map 的
+# docs/07-jiritsu-breakthrough.md 在 FX30 6.00 上实测）：
+#   0x400D GET_VERSION —— 只读，回 4 字节固件版本（6.00 → 06 00 00 10）
+#   0x4002 MOUNT       —— 重新挂载 /tmp/jiritsu 所在的 nflasha6 分区
+# 删掉 /tmp/jiritsu/libJit.so 会让 Jiritsu 卸载整个分区，此后所有文件操作一律被拒；
+# 同族机器上唯一已知的相机侧补救就是这条 MOUNT。
+CMD_VERSION = 0x400D
+CMD_MOUNT = 0x4002
 
 MAGIC = b"A67D"
 VERSION = 1
@@ -78,6 +86,15 @@ def _status(payload_bytes: bytes) -> int:
     return struct.unpack_from("<I", payload_bytes)[0]
 
 
+def service(channel, command: int, data: bytes = b""):
+    """发一条 category 0x1001 的命令，返回 (响应码, 正文)。
+
+    只给 0x4002 MOUNT / 0x400D GET_VERSION 这类不带文件语义的命令用；文件命令仍然
+    走 jiritsu()，那里有白名单，免得哪天有人顺手拿它去写文件。
+    """
+    return channel.send(SERVICE_FUNCTION, struct.pack("<HH", 0x1001, command) + data)
+
+
 def jiritsu(channel, command: int, data: bytes = b"", missing: bool = False):
     """发送一条 Jiritsu 文件命令，返回去掉状态码后的数据。"""
     if command not in (CMD_SELECT, CMD_WRITE, CMD_READ, CMD_REMOVE):
@@ -106,8 +123,13 @@ def _checked_path(path: str) -> bytes:
     return encoded
 
 
-def select(channel, path: str) -> None:
-    jiritsu(channel, CMD_SELECT, b"\0" + _checked_path(path) + b"\0")
+def select(channel, path: str, missing: bool = False) -> None:
+    """选中一个文件。
+
+    missing=True 时"文件本来不存在"不算错误：清理时要能区分"本来没有"和
+    "有但删不掉"，而以前 select 一律抛 DumpError，外层再静默吞掉，两者就分不清了。
+    """
+    jiritsu(channel, CMD_SELECT, b"\0" + _checked_path(path) + b"\0", missing=missing)
 
 
 def read_file(channel, path: str, missing: bool = False):
@@ -127,7 +149,7 @@ def remove(channel, path: str, missing: bool = True) -> bool:
     先 select 目标路径，再发 CMD_REMOVE 且正文只有 b"\\0\\xff"。
     路径直接塞进 CMD_REMOVE 会被相机拒成 0x10000201。
     """
-    select(channel, path)
+    select(channel, path, missing=missing)
     return jiritsu(channel, CMD_REMOVE, b"\0\xff", missing=missing) is not None
 
 

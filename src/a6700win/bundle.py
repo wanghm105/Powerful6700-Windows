@@ -49,11 +49,11 @@ def _report(preset: str | None) -> dict:
 
 def _colors(progress, report: dict, restoring: bool) -> bool:
     """第一段：写 CP 色度单元（相机运行内存）。返回是否真的写了。"""
-    progress("第一段：外观颜色（CP 色度单元，写进相机运行内存）…")
+    progress("第 1 段：改颜色（写进相机的运行内存）…")
     try:
         result = looks.restore(progress) if restoring else looks.apply(progress)
     except Exception as exc:  # noqa: BLE001 - 交给调用方决定怎么讲
-        raise BundleError(f"颜色这一段失败，菜单文字一个字都没动：{exc}") from exc
+        raise BundleError(f"改颜色这一段失败，菜单名字一个字都没动：{exc}") from exc
     report["colors"] = result
     report["steps"].append("colors")
     wrote = bool((result or {}).get("wrote"))
@@ -63,14 +63,14 @@ def _colors(progress, report: dict, restoring: bool) -> bool:
 
 def _names(progress, report: dict, restoring: bool, colors_wrote: bool) -> bool:
     """第二段：写 /usr 语言资源（持久）。失败时如实说明颜色已经变了。"""
-    progress("第二段：菜单文字（/usr 语言资源，重新连一次相机）…")
+    progress("第 2 段：改菜单名字（会重新连一次相机）…")
     try:
         result = looknames.restore(progress, preset=report["preset"]) if restoring \
             else looknames.apply(progress, preset=report["preset"])
     except Exception as exc:  # noqa: BLE001
-        tail = "颜色已经写进相机了，可以单独点「还原本页外观」回滚" if colors_wrote \
+        tail = "颜色已经写进相机了，可以单独点「还原颜色」改回去" if colors_wrote \
             else "颜色这一段没有写入"
-        raise BundleError(f"菜单文字这一段失败：{exc}。{tail}。") from exc
+        raise BundleError(f"改菜单名字这一段失败：{exc}。{tail}。") from exc
     report["names"] = result
     report["steps"].append("names")
     wrote = bool((result or {}).get("wrote"))
@@ -82,8 +82,8 @@ def _run(progress, preset: str | None, restoring: bool) -> dict:
     report = _report(preset)
     started = time.monotonic()
     action = "还原" if restoring else "写入"
-    progress(f"一次{action}：颜色 + 菜单文字（命名方案「{report['label']}」）。"
-             f"分两次连接，中间自动等相机复位，全程大约 2 分钟。{COOLDOWN_HINT}")
+    progress(f"一次{action}：颜色 + 名字（名字用「{report['label']}」）。"
+             f"分两次连接，中间等相机自己复位，全程大约 2 分钟。{COOLDOWN_HINT}")
     try:
         colors_wrote = _colors(progress, report, restoring)
         try:
@@ -120,17 +120,17 @@ def summary(report: dict | None) -> list[str]:
     if names:
         preset = (looknames.PRESETS.get(str(names.get("preset") or "")) or {}).get("label")
         changes = names.get("changes") or []
-        text = f"菜单文字：改了 {len(changes)} 条记录" if changes else "菜单文字：无需改动"
+        text = f"菜单名字：改了 {len(changes)} 条" if changes else "菜单名字：不用改"
         if preset:
             text += f"（{preset}）"
         lines.append(text)
         mode = names.get("mode")
         if mode == "baseline":
-            lines.append("菜单文字按出厂基线整份写回，回读哈希一致。")
+            lines.append("菜单名字用出厂底稿整份写回，读回来一模一样。")
         elif mode == "labels-factory":
-            lines.append("菜单文字回短名后哈希与出厂一致，属逐字节还原。")
+            lines.append("菜单名字改回短名之后和出厂文件一致，属于逐字节还原。")
         elif mode == "labels":
-            lines.append("本地没有出厂基线，菜单文字只改回了出厂短名。")
+            lines.append("本地没有出厂底稿，菜单名字只改回了出厂短名。")
     if label and report.get("steps"):
         lines.append(f"两段都按「{label}」这套叫法对齐。")
     if report.get("seconds"):

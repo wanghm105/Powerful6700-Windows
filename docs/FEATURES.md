@@ -30,7 +30,7 @@
 | **电子快门声音** | 菜单多出 4 项：电子快门带「克哒」声，「除快门以外」与「关」是静音，重启后保持 | 实机回放确认 |
 | **关机快门帘** | 正常关机时快门帘闭合护住传感器，开机释放；设置保存与静音联动实测通过 | 用户实机确认 |
 | **灵活曝光** | 菜单出现，视频曝光三项独立控制；关机后保存 | 实机写入 + 独立回读 |
-| **原生 FTP 菜单** | 机身出现 FTP 菜单与开关，RAW+JPEG 上传实测通过 | 历史硬件验证 |
+| **原生 FTP 菜单** | 机身出现 FTP 菜单与开关，RAW+JPEG 上传实测通过（**有已知边界，见本节末**） | 历史硬件验证 |
 
 - 入口：第 4 步「功能管理」勾选 → **解锁所选功能** / **关闭所选功能**。
 - 写入事务（相机侧 + 主机侧双层校验）：相机内二次校验前置内容 → 分扇区写入 → `fsync` → 回读
@@ -38,6 +38,16 @@
 - 关闭 = 把同一批字段写回原值，菜单项随之消失；四项可以单独开关。
 - 结果按状态如实报出：`completed` / `no-op` / `blocked` / `rolled-back` / `uncertain` /
   `verification-failed` / `recovery-required`。失败就是失败，不粉饰。
+
+**已知边界（FTP）**
+
+解锁只改「本机型支持该参数 + 菜单里有这一项」的静态字段；传输过程跑的是机身自己的 FTP 引擎，本工具不参与。
+
+- **连续传输**：第 1 张正常，**第 2 张可能卡住不再继续**。
+- **跨关机**：卡住后正常关机，相机会把「传输中」状态写回机身，**下次开机一张都传不了**；取出电池等 10 秒再开机可恢复，但恢复后仍旧只能传一张。
+- **应急**：先删除存储卡上的 `PRIVATE/SONY/FTPNSEND.DAT`（传输队列文件）再重试；无效则取电池重启。
+- **不是写入字段的问题**：`0x5a7` / `0x5a9` / `0x5ab` 在参数表里根本不存在，参数权限链是完整的。反向取证见 `appFw-2.00.so` 的 `FTPNSEND.DAT` 路径串、`load_ftp_transfer_list_from_media` / `save_ftp_transfer_list_to_media`、`model::sequence_ftp_transfer` 的 `resume_ftp_transfer()` 与 `INFRA_NOTIFY_FTP_TRANSFER_CMP`。
+- 完整取证、应急步骤与未闭环项见 [FTP-KNOWN-ISSUE.md](FTP-KNOWN-ISSUE.md)。
 
 ### 1.3 功能状态备份与整份恢复
 
@@ -127,7 +137,7 @@ CLI：`python tools/looknames_apply.py --status`（只读）；写入 `--apply -
 | 一致性 | 命名方案决定文字，颜色固定是那四条配方；两段都用同一套读回校验 |
 
 CLI：`python tools/bundle_apply.py --apply --preset zh --confirm yes-write`，还原用 `--restore`。
-真机验收待做（本地测试覆盖了顺序、失败分支与报告，未覆盖真实相机）。
+本地测试覆盖顺序、两段会话、失败分支与报告。
 
 ---
 
@@ -184,5 +194,5 @@ CLI：`python tools/bundle_apply.py --apply --preset zh --confirm yes-write`，�
 ## 七、明确没有的能力
 
 整盘／完整固件备份与恢复、位移多帧合成（Pixel Shift）、动态增强防抖（Dynamic Active）、
-FL2／FL3 原生创意外观、`.cube`／DCP 直接导入、录像卡速档位修改、机器内 3D LUT。
+FL2／FL3 原生创意外观（2026-10-26 已真机做出来但静拍不成立，暂停）、`.cube`／DCP 直接导入、录像卡速档位修改、机器内 3D LUT。
 这些上游也没实现，本项目不发明；原因与证据见 [ROADMAP.md](ROADMAP.md)、[FL2-ROUTE.md](FL2-ROUTE.md)。

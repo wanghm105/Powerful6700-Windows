@@ -1,12 +1,18 @@
 """四个主流程页面：须知、相机准备、功能管理、结果。"""
 from __future__ import annotations
 
-from PySide6.QtCore import QEvent, Qt
+from datetime import datetime
+from pathlib import Path
+
+from PySide6.QtCore import QEvent, Qt, QUrl
+from PySide6.QtGui import QDesktopServices, QGuiApplication
 from PySide6.QtWidgets import (
-    QCheckBox, QComboBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QPushButton,
+    QCheckBox, QComboBox, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QSizePolicy, QVBoxLayout, QWidget,
 )
 
+from .. import diagnostics, paths
+from ..notices import HARDWARE_RECOVERY_URL, NOTICE_SECTIONS
 from . import theme
 from .widgets import (
     Badge, Card, CheckLine, Divider, DocLink, FeatureRow, LabeledCheck, LogBox, Pill, SectionRow,
@@ -16,6 +22,17 @@ from .widgets import (
 
 
 COLUMN_WIDTH = 800  # 内容列上限：正文行宽控制在 45 字左右
+
+
+def _faint(text: str) -> "WrapLabel":
+    label = WrapLabel(text)
+    label.setObjectName("Faint")
+    return label
+
+
+def _bundle_default() -> Path:
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    return paths.documents_dir() / ("Powerful6700-诊断-%s.zip" % stamp)
 
 
 class Page(QWidget):
@@ -165,7 +182,7 @@ class Page(QWidget):
 
 class NoticePage(Page):
     title = "操作前须知"
-    subtitle = "先读一遍适用范围、验证进度与操作风险，再运行启动检查。"
+    subtitle = "先看完「要紧的几条」，再跑一次启动检查。"
     step = 1
 
     def __init__(self, app, parent: QWidget | None = None):
@@ -176,10 +193,10 @@ class NoticePage(Page):
         self.sections_box.add_layout(self.rows_box)
         self.root.addWidget(self.sections_box)
 
-        self.env_card = Card("启动检查")
+        self.env_card = Card("动手前先检查这台电脑")
         self.status = Pill("")
         self.env_card.head_left.addWidget(self.status)
-        self.check_button = QPushButton("开始启动检查")
+        self.check_button = QPushButton("开始检查")
         self.check_button.setObjectName("Primary")
         self.check_button.clicked.connect(lambda: self.app.check_environment())
         self.env_card.header.addWidget(self.check_button)
@@ -187,7 +204,7 @@ class NoticePage(Page):
         self.env_rows = QVBoxLayout()
         self.env_rows.setSpacing(9)
         self.env_card.add_layout(self.env_rows)
-        self.env_empty = QLabel("尚未运行启动检查。")
+        self.env_empty = QLabel("还没检查。")
         self.env_empty.setObjectName("Muted")
         self.env_rows.addWidget(self.env_empty)
         self.env_card.add(Divider())
@@ -217,7 +234,7 @@ class NoticePage(Page):
         self.env_hint.setObjectName("Faint")
         ack_row.addWidget(self.env_hint)
         ack_row.addStretch(1)
-        self.ack = LabeledCheck("我已阅读，并了解适用范围与真实设备操作风险")
+        self.ack = LabeledCheck("上面的说明我都看过，知道有风险，仍然继续")
         self.ack.toggled.connect(self._acknowledge)
         ack_row.addWidget(self.ack)
         self.env_card.add_layout(ack_row)
@@ -233,11 +250,11 @@ class NoticePage(Page):
 
     def step_reason(self, snapshot: dict) -> str | None:
         if not snapshot.get("notice_acknowledged"):
-            return "勾选「启动检查」里的确认后，才能进入下一步。"
+            return "先勾上「我都看过」那个框，才能进下一步。"
         if not snapshot.get("checked"):
-            return "请先运行启动检查。"
+            return "先跑一次启动检查。"
         if not (snapshot.get("environment") or {}).get("ready"):
-            return "启动检查未全部通过，请按提示处理后重试。"
+            return "检查没全部通过，按上面的提示处理完再跑一次。"
         return None
 
     def _go_next(self) -> None:
@@ -247,10 +264,12 @@ class NoticePage(Page):
     def render(self, snapshot: dict) -> None:
         notice = snapshot.get("notice") or {}
         if not self._rendered_sections:
-            sections = notice.get("sections", [])
+            # 壳层那两条（内部存储 / 断电等 60 秒）排在 vendor 之前：它们讲的是这台
+            # 相机真出过的事，比「适用范围」更该先被看见。
+            sections = list(NOTICE_SECTIONS) + list(notice.get("sections", []))
             for index, section in enumerate(sections, start=1):
                 self.rows_box.addWidget(SectionRow(index, section, self.app.open_url))
-            self.sections_box.set_subtitle(f"共 {len(sections)} 条 · 阅读后可逐项检查环境")
+            self.sections_box.set_subtitle(f"共 {len(sections)} 条 · 看完再检查环境")
             self._rendered_sections = True
 
         self._syncing = True
@@ -267,7 +286,7 @@ class NoticePage(Page):
             for row in checks:
                 self.env_rows.addWidget(CheckLine(row))
         else:
-            empty = QLabel("尚未运行启动检查。")
+            empty = QLabel("还没检查。")
             empty.setObjectName("Muted")
             self.env_rows.addWidget(empty)
 
@@ -280,35 +299,35 @@ class NoticePage(Page):
 
         ready = bool(environment.get("ready"))
         checked = bool(snapshot.get("checked"))
-        self.check_button.setText("重新运行启动检查" if checked else "开始启动检查")
+        self.check_button.setText("再跑一次检查" if checked else "开始检查")
         if busy:
-            self.status.set_state("操作进行中", theme.WARNING)
+            self.status.set_state("正在检查", theme.WARNING)
         elif ready:
-            self.status.set_state("环境就绪", theme.SUCCESS)
+            self.status.set_state("这台电脑没问题", theme.SUCCESS)
         elif checked:
-            self.status.set_state("存在问题待处理", theme.DANGER)
+            self.status.set_state("有问题要处理", theme.DANGER)
         else:
-            self.status.set_state("待检查", theme.TEXT_FAINT)
+            self.status.set_state("还没检查", theme.TEXT_FAINT)
         self.check_button.setEnabled(acknowledged and not busy)
         self.check_button.setToolTip(
-            "" if acknowledged else "请先勾选「启动检查」里的「我已阅读」确认。")
+            "" if acknowledged else "先勾上左边那个确认框。")
 
         if busy:
-            hint = "操作进行中，请稍候。"
+            hint = "正在检查，等一下。"
         elif not acknowledged:
-            hint = "勾选右侧确认后，即可运行启动检查。"
+            hint = "勾上确认，就能开始检查。"
         elif not checked:
-            hint = "已确认风险。请运行右上角的「开始启动检查」。"
+            hint = "已经确认过了，点右上角的「开始检查」。"
         elif ready:
-            hint = "全部通过，可以进入「相机准备」。"
+            hint = "全部通过，可以进「相机准备」了。"
         else:
-            hint = "按上面的提示处理后，重新运行启动检查。"
+            hint = "按上面的提示处理完，再跑一次检查。"
         self.env_hint.setText(hint)
 
 
 class PreparationPage(Page):
     title = "相机准备"
-    subtitle = "按顺序确认四项准备工作；确认后即可进行只读兼容性检查。"
+    subtitle = "照顺序确认四件事，然后做一次只看不改的检查。"
     step = 3
 
     def __init__(self, app, parent: QWidget | None = None):
@@ -380,17 +399,17 @@ class PreparationPage(Page):
         self.clear_button.setEnabled(not busy and done > 0)
         self.inspect_button.setEnabled(ready and all_confirmed and not busy)
         if not ready:
-            self.inspect_button.setToolTip("请先在“操作前须知”页完成启动检查。")
+            self.inspect_button.setToolTip("先去「操作前须知」把启动检查跑完。")
         elif not all_confirmed:
-            self.inspect_button.setToolTip("请先确认上方全部准备工作。")
+            self.inspect_button.setToolTip("先把上面四项都确认一遍。")
         else:
             self.inspect_button.setToolTip("")
 
     def step_reason(self, snapshot: dict) -> str | None:
         if not snapshot.get("ready"):
-            return "请先把四项准备全部确认。"
+            return "先把上面四项确认完。"
         if not snapshot.get("compatible"):
-            return "请先点「开始只读检查」，通过后进入功能管理。"
+            return "先点「开始只读检查」，通过了再进下一步。"
         return None
 
     def _confirm(self, step_id: str, value: bool) -> None:
@@ -399,7 +418,7 @@ class PreparationPage(Page):
 
 class HomePage(Page):
     title = "功能管理"
-    subtitle = "只读检查通过后可选择功能并执行解锁、关闭、备份或恢复。"
+    subtitle = "只读检查通过后，在这里开关功能、备份或还原。"
     step = 4
 
     def __init__(self, app, parent: QWidget | None = None):
@@ -414,23 +433,29 @@ class HomePage(Page):
         self.status_row.addStretch(1)
         self.root.addLayout(self.status_row)
 
-        self.summary_card = Card("只读检查结果")
+        self.summary_card = Card("上次检查的结果")
         self.summary = WrapLabel("尚未执行只读检查。")
         self.summary.setObjectName("Muted")
         self.summary_card.add(self.summary)
+        # 被结构守卫拦下时，上游只给一句「内容或布局不匹配」（operations.py:288），
+        # 差异明细其实在 plan["issues"] 里。这里先露三行，完整版在「操作结果」页。
+        self.blocked_hint = WrapLabel("")
+        self.blocked_hint.setObjectName("Muted")
+        self.blocked_hint.setVisible(False)
+        self.summary_card.add(self.blocked_hint)
         self.root.addWidget(self.summary_card)
 
-        self.features_card = Card("功能列表", "仅列出清单中已知的固定范围字段")
+        self.features_card = Card("功能列表", "只列这份清单里核对过的开关")
         self.features_box = QVBoxLayout()
         self.features_box.setSpacing(8)
         self.features_card.add_layout(self.features_box)
-        self.features_empty = QLabel("执行只读检查后显示可管理功能。")
+        self.features_empty = QLabel("先做一次只读检查，这里才会列出能开能关的功能。")
         self.features_empty.setObjectName("Muted")
         self.features_box.addWidget(self.features_empty)
         self.feature_rows: dict[str, FeatureRow] = {}
         self.root.addWidget(self.features_card)
 
-        self.backup_card = Card("功能状态备份", "恢复会把整份功能状态写回，与勾选无关。")
+        self.backup_card = Card("功能状态备份", "还原是整份写回，跟上面勾了哪些无关。")
         backup_row = QHBoxLayout()
         backup_row.setSpacing(10)
         self.backup_combo = QComboBox()
@@ -444,10 +469,20 @@ class HomePage(Page):
         self.restore_button.clicked.connect(self._restore)
         backup_row.addWidget(self.restore_button)
         self.backup_card.add_layout(backup_row)
+        hint_row = QHBoxLayout()
+        hint_row.setSpacing(10)
         self.backup_hint = QLabel("")
         self.backup_hint.setObjectName("Faint")
         self.backup_hint.setWordWrap(False)
-        self.backup_card.add(self.backup_hint)
+        hint_row.addWidget(self.backup_hint)
+        hint_row.addStretch(1)
+        self.open_backup_button = QPushButton("打开备份目录")
+        self.open_backup_button.setObjectName("Ghost")
+        self.open_backup_button.setToolTip("在资源管理器里打开备份文件所在的文件夹。")
+        self.open_backup_button.clicked.connect(self._open_backup_dir)
+        hint_row.addWidget(self.open_backup_button)
+        self.backup_card.add_layout(hint_row)
+        self._backup_dir = ""
         self.root.addWidget(self.backup_card)
 
         actions = QHBoxLayout()
@@ -486,10 +521,25 @@ class HomePage(Page):
         else:
             self.app.call_controller(lambda: self.app.controller.reconnect())
 
+    def _open_backup_dir(self) -> None:
+        target = self._backup_dir or str(paths.backup_dir())
+        try:
+            Path(target).mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            self.app.notify(f"打不开备份目录：{exc}", error=True)
+            return
+        url = QUrl.fromLocalFile(target).toString()
+        opener = getattr(self.app, "open_url", None)
+        if callable(opener):
+            opener(url)
+        else:
+            QDesktopServices.openUrl(QUrl(url))
+        self.log.log(f"备份目录：{target}")
+
     def _restore(self) -> None:
         backup_id = self.backup_combo.currentData()
         if not backup_id:
-            self.app.notify("请先选择一个备份。", error=True)
+            self.app.notify("先在列表里挑一份备份。", error=True)
             return
         self.app.operate("restore", backup_id=str(backup_id))
 
@@ -512,7 +562,17 @@ class HomePage(Page):
             ]
             self.summary.setText("　·　".join(str(part) for part in parts))
         else:
-            self.summary.setText("尚未执行只读检查。")
+            self.summary.setText("还没做只读检查。")
+
+        issues = list(((snapshot.get("result") or {}).get("plan") or {}).get("issues") or [])
+        if issues:
+            preview = diagnostics.issue_lines(issues, limit=3)
+            self.blocked_hint.setText(
+                "检查没通过：有 %d 处对不上。完整原因在「操作结果」页，那里能一键复制："
+                % len(issues) + "\n" + "\n".join("· " + row for row in preview))
+        else:
+            self.blocked_hint.setText("")
+        self.blocked_hint.setVisible(bool(issues))
 
         features = snapshot.get("features") or []
         known = list(self.feature_rows)
@@ -553,6 +613,8 @@ class HomePage(Page):
         self.backup_button.setEnabled(bool(snapshot.get("compatible")) and not snapshot.get("busy"))
         self.restore_button.setEnabled(bool(backups) and not snapshot.get("busy"))
         backup_dir = str(snapshot.get("backup_dir") or "")
+        self._backup_dir = backup_dir
+        self.open_backup_button.setEnabled(True)
         if backup_dir:
             tail = "\\".join(backup_dir.rstrip("\\").split("\\")[-2:])
             self.backup_hint.setText(f"备份目录：…\\{tail}")
@@ -573,14 +635,14 @@ class HomePage(Page):
 
 class ResultPage(Page):
     title = "操作结果"
-    subtitle = "结果来自真实设备回读校验；如提示不确定请按说明处置。"
+    subtitle = "下面是从相机读回来的结果；说「不确定」就按说明做，别自己猜。"
     step = 6
 
     def __init__(self, app, parent: QWidget | None = None):
         super().__init__(app, parent)
         self.card = Card("")
         self.card.set_title("")
-        self.headline = QLabel("尚无结果")
+        self.headline = QLabel("还没有结果")
         self.headline.setStyleSheet("font-size: 20px; font-weight: 600;")
         self.card.add(self.headline)
         self.detail = WrapLabel("")
@@ -588,10 +650,37 @@ class ResultPage(Page):
         self.card.add(self.detail)
         self.meta = WrapLabel("")
         self.meta.setObjectName("Faint")
-        self.meta.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        self.card.add(self.meta)
         self.root.addWidget(self.card)
-        self.aftercare_card = Card("机身验收")
+
+        # 失败时先给三步自救：最常见的情况是「一看没反应就连续重试」，那才是真变砖。
+        self.rescue_card = Card("先别急着重试")
+        self.rescue_body = QVBoxLayout()
+        self.rescue_body.setSpacing(8)
+        self.rescue_card.add_layout(self.rescue_body)
+        self.rescue_card.setVisible(False)
+        self.root.addWidget(self.rescue_card)
+
+        # 被拦下时把 plan["issues"] 摊开：上游算好了差异，之前一个字段都没显示。
+        self.issues_card = Card("哪里对不上")
+        self.issues_body = QVBoxLayout()
+        self.issues_body.setSpacing(6)
+        self.issues_card.add_layout(self.issues_body)
+        issues_actions = QHBoxLayout()
+        issues_actions.setSpacing(8)
+        issues_actions.addStretch(1)
+        self.copy_button = QPushButton("复制诊断信息")
+        self.copy_button.setObjectName("Ghost")
+        self.copy_button.clicked.connect(self._copy_diagnostics)
+        issues_actions.addWidget(self.copy_button)
+        self.export_button = QPushButton("导出诊断包")
+        self.export_button.setObjectName("Ghost")
+        self.export_button.clicked.connect(self._export_diagnostics)
+        issues_actions.addWidget(self.export_button)
+        self.issues_card.add_layout(issues_actions)
+        self.issues_card.setVisible(False)
+        self.root.addWidget(self.issues_card)
+
+        self.aftercare_card = Card("在相机上确认")
         self.aftercare_body = QVBoxLayout()
         self.aftercare_body.setSpacing(10)
         self.aftercare_card.add_layout(self.aftercare_body)
@@ -599,7 +688,7 @@ class ResultPage(Page):
         self.root.addWidget(self.aftercare_card)
         actions = QHBoxLayout()
         actions.addStretch(1)
-        self.home_button = QPushButton("返回功能管理")
+        self.home_button = QPushButton("回到功能开关")
         self.home_button.setObjectName("Primary")
         self.home_button.clicked.connect(self._back_to_home)
         actions.addWidget(self.home_button)
@@ -615,10 +704,12 @@ class ResultPage(Page):
     def render(self, snapshot: dict) -> None:
         result = snapshot.get("result") or {}
         if not result:
-            self.headline.setText("尚无结果")
-            self.detail.setText("完成一次操作后这里会显示回读校验结论。")
+            self.headline.setText("还没有结果")
+            self.detail.setText("做完一次操作，这里会显示从相机读回来的结论。")
             self.meta.setText("")
+            self.issues_card.setVisible(False)
             self.aftercare_card.setVisible(False)
+            self.rescue_card.setVisible(False)
             return
         success = bool(result.get("success"))
         self.card.set_title(str(result.get("status", "")))
@@ -643,7 +734,89 @@ class ResultPage(Page):
         if result.get("cleanup_warning"):
             meta.append(f"清理提示：{result['cleanup_warning']}")
         self.meta.setText("\n".join(meta))
+        self._render_rescue(result)
+        self._render_issues(result)
         self._render_aftercare(result)
+
+    RESCUE_STEPS = (
+        "拔掉数据线，先别再插回去。",
+        "取出电池，等满 1 分钟以上，再把电池装回去。",
+        "只装电池开机（别插线）：能进菜单就说明救回来了；一直黑屏或反复重启，就只剩硬件恢复。",
+    )
+
+    def _render_rescue(self, result: dict) -> None:
+        """失败时最先给的东西：三步自救，而不是让用户自己猜着再试一遍。"""
+        reset_layout(self.rescue_body)
+        if bool(result.get("success")):
+            self.rescue_card.setVisible(False)
+            return
+        if result.get("write_attempted"):
+            head = "写到一半停了。按这个顺序处理，别在这里再点一次。"
+        elif result.get("device_access"):
+            head = "这次没写进去。按这个顺序处理，再回来看。"
+        else:
+            head = "这次没能跟相机说上话。按这个顺序处理，再回来看。"
+        intro = WrapLabel(head)
+        intro.setObjectName("Muted")
+        self.rescue_body.addWidget(intro)
+        for index, step in enumerate(self.RESCUE_STEPS, 1):
+            self.rescue_body.addWidget(WrapLabel(f"{index}. {step}"))
+        stop = WrapLabel("不要连续重试、不要反复插拔数据线——那会让相机更久连不上电脑，连海量存储器（MSC）都不出现。")
+        stop.setStyleSheet(f"color: {theme.DANGER}; font-weight: 600;")
+        self.rescue_body.addWidget(stop)
+        links = QHBoxLayout()
+        links.setSpacing(18)
+        self.rescue_link = DocLink("硬件说明（救砖）↗")
+        self.rescue_link.clicked.connect(lambda: self.app.open_url(HARDWARE_RECOVERY_URL))
+        links.addWidget(self.rescue_link)
+        links.addStretch(1)
+        self.rescue_body.addLayout(links)
+        self.rescue_card.setVisible(True)
+
+    # --------------------------------------------------------------- 差异与取证
+    def _render_issues(self, result: dict) -> None:
+        """blocked 时给出「差在哪、下一步做什么」，取证入口放在同一张卡上。"""
+        issues = list((result.get("plan") or {}).get("issues") or [])
+        reset_layout(self.issues_body)
+        if not issues:
+            self.issues_card.setVisible(False)
+            return
+        self.issues_card.set_title("哪里对不上 · %d 处" % len(issues))
+        hint = diagnostics.issue_hint(issues)
+        if hint:
+            head = WrapLabel(hint)
+            head.setObjectName("Muted")
+            self.issues_body.addWidget(head)
+        for row in diagnostics.issue_lines(issues, limit=10):
+            self.issues_body.addWidget(_faint("· " + row))
+        run_directory = result.get("run_directory")
+        if run_directory:
+            self.issues_body.addWidget(_faint("运行目录：%s" % run_directory))
+        self.issues_card.setVisible(True)
+
+    def _copy_diagnostics(self) -> None:
+        result = dict(self.app.snapshot.get("result") or {})
+        if not result:
+            self.app.notify("还没有结果可以复制。", error=True)
+            return
+        QGuiApplication.clipboard().setText(diagnostics.report(result, diagnostics.environment()))
+        self.app.notify("诊断信息已复制，可以直接贴到 issue。")
+
+    def _export_diagnostics(self) -> None:
+        result = dict(self.app.snapshot.get("result") or {})
+        if not result:
+            self.app.notify("还没有结果可以导出。", error=True)
+            return
+        target, _ = QFileDialog.getSaveFileName(
+            self, "保存诊断包", str(_bundle_default()), "Zip (*.zip)")
+        if not target:
+            return
+        try:
+            path = diagnostics.export_bundle(result, Path(target))
+        except OSError as exc:
+            self.app.notify("导出失败：%s" % exc, error=True)
+            return
+        self.app.notify("已导出诊断包：%s" % path)
 
     def _render_aftercare(self, result: dict) -> None:
         aftercare = result.get("aftercare")
@@ -652,10 +825,10 @@ class ResultPage(Page):
             self.aftercare_card.setVisible(False)
             return
         restart = bool(aftercare.get("restart_required"))
-        self.aftercare_card.set_title("机身验收" if restart else "菜单确认")
+        self.aftercare_card.set_title("在相机上确认" if restart else "在菜单里确认")
         steps = aftercare.get("steps") or []
         if restart and steps:
-            head = WrapLabel("写入与独立回读已通过，但功能要断电重启后才体现。请按顺序完成：")
+            head = WrapLabel("已经写进去、也读回来核对过了，但要断电重开一次才生效。按顺序做完：")
             head.setObjectName("Muted")
             self.aftercare_body.addWidget(head)
             for index, step in enumerate(steps, 1):
@@ -663,7 +836,7 @@ class ResultPage(Page):
                 self.aftercare_body.addWidget(row)
         checks = aftercare.get("features") or []
         if checks:
-            head = WrapLabel("重启后按下列菜单逐项确认：" if restart else "按下列菜单逐项确认：")
+            head = WrapLabel("重开后按下面的菜单一项项确认：" if restart else "按下面的菜单一项项确认：")
             head.setObjectName("Muted")
             self.aftercare_body.addWidget(head)
         for check in checks:

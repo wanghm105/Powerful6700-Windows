@@ -85,6 +85,10 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(result, ensure_ascii=False))
         return 0
 
+    from . import runlog
+
+    runlog.start("cli" if (args.dump or args.inspect_once or args.diagnose) else "gui")
+
     if args.dump:
         if not args.out:
             print("--dump 需要同时给出 --out 输出文件")

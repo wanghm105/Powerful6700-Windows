@@ -3,22 +3,22 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QComboBox, QFileDialog, QGridLayout, QHBoxLayout, QLabel, QPushButton,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QComboBox, QFileDialog, QGridLayout, QHBoxLayout, QLabel, QMessageBox,
+                               QPushButton, QVBoxLayout, QWidget)
 
 from .. import bundle, cp, looknames, looks as looks_mod
 from . import theme
 from .pages import Page
-from .widgets import Card, Divider, LogBox, Pill, WrapLabel, reset_layout
+from .widgets import Card, Divider, LabeledCheck, LogBox, Pill, WrapLabel, reset_layout
 
 STATE_TEXT = {
-    "installed": ("已写入配方", theme.SUCCESS),
+    "installed": ("已写入颜色", theme.SUCCESS),
     "factory": ("出厂外观", theme.TEXT_FAINT),
     "other": ("已被其它改动", theme.WARNING),
 }
 
 NAMES_STATE_TEXT = {
-    "installed": ("已是目标文字", theme.SUCCESS),
+    "installed": ("已是本程序改的", theme.SUCCESS),
     "factory": ("出厂短名", theme.TEXT_FAINT),
     "other": ("其它改动", theme.WARNING),
     "mixed": ("两条记录不一致", theme.WARNING),
@@ -32,12 +32,20 @@ KIND_TEXT = {
     "other": "其它改动",
 }
 
+WRITE_RULES = "拔数据线、关相机、拔电池或断电、让电脑睡眠 / 休眠 / 关机、切走 USB 模式"
+
+# 确认框要摆清楚「写哪里 / 多少字节 / 怎么回滚」：这是变砖前的最后一道门，数字必须是真值。
+COLOR_RECORDS = 4                              # 只改 bank 1/4/6/14 各一条记录
+COLOR_RECORD_BYTES = looks_mod.STRIDE          # 每条 64 字节
+COLOR_UNIT_BYTES = cp.CP_KEYS[cp.CHROMA_UNIT]  # 8,192：整块一起重写
+COLOR_PERSIST = "/setting/BACKUP.BIN"          # 正常关机时相机自己把 RAM 存到这里
+
 
 class LooksPage(Page):
     title = "自定义外观"
     step = 5
-    subtitle = ("把 PT / NT / VV / VV2 四个槽位换成富士与理光的胶片配色；颜色记录与菜单文字分开写、"
-                "分别可还原。")
+    subtitle = ("把 PT / NT / VV / VV2 四个外观换成富士和理光的胶片配色；颜色和菜单名字分开写，"
+                "各自都能还原。")
 
     def __init__(self, app, parent: QWidget | None = None):
         super().__init__(app, parent)
@@ -45,35 +53,71 @@ class LooksPage(Page):
         self.names_error: str | None = None
         self.names_preset = looknames.load_preset()
 
-        self.intro = Card("这一页会做什么")
+        self.intro = Card("这一页改什么")
         body = WrapLabel(
-            "相机里有 16 个外观槽位（10 个内建 + 6 个自定义）。本页改写其中四个内建槽位的颜色记录 —— "
-            "CP 色度单元 0x02A40001 里的 bank 1 / 4 / 6 / 14，每条 64 字节 —— "
-            "把它们的配色换成富士与理光的四款胶片外观。只改「颜色浓度与色相分布」，"
-            "不改影调曲线。"
+            "相机里有 16 个外观槽位。本页改的是其中 4 个内建槽位的配色，换成富士和理光的四款胶片外观"
+            "（CC、NC、PF、NF）。只改颜色，不改明暗过渡。"
         )
         body.setObjectName("Muted")
         self.intro.add(body)
         self.intro.add(Divider())
         self.intro.add_layout(self._mapping_table())
         note = WrapLabel(
-            "菜单里显示的文字是另一份东西（/usr 里的语言资源文件），在下面的「菜单文字」里单独改写；"
-            "两部分可以只做一半。写入前请把相机切到「USB 存储（MSC）」模式，只连这一台相机，全程不断线。"
+            "名字先选一套：英文原名还是中文简称，颜色一点不受影响。名字和颜色是两回事，"
+            "也可以只改一件。动手前把相机的 USB 连接方式选成「海量存储器(MSC)」："
+            "MENU → 设置 → USB → USB 连接模式。只连这一台相机，全程别拔线。"
         )
         note.setObjectName("Faint")
         self.intro.add(note)
+        preset_row = QHBoxLayout()
+        preset_row.setSpacing(8)
+        preset_caption = QLabel("名字用哪一套")
+        preset_caption.setObjectName("Faint")
+        preset_row.addWidget(preset_caption)
+        self.names_preset_box = QComboBox()
+        for item in looknames.preset_labels():
+            self.names_preset_box.addItem(item["label"], item["key"])
+        self.names_preset_box.setToolTip("只决定菜单里写成哪一套叫法，颜色一点不受影响。")
+        current = self.names_preset_box.findData(self.names_preset)
+        self.names_preset_box.setCurrentIndex(max(0, current))
+        self.names_preset_box.currentIndexChanged.connect(self._preset_changed)
+        preset_row.addWidget(self.names_preset_box)
+        self.preset_hint = QLabel("")
+        self.preset_hint.setObjectName("Faint")
+        preset_row.addWidget(self.preset_hint)
+        preset_row.addStretch(1)
+        self.intro.add_layout(preset_row)
+        self._sync_preset_hint()
         self.root.addWidget(self.intro)
 
         # ------------------------------------------------------------ 一次写入
-        self.bundle_card = Card("一次写入：颜色 + 名字", "两段会话、中间自动等相机复位")
+        self.bundle_card = Card("一次做完：颜色 + 名字",
+                                "两次连接，中间等相机自己复位，约 2 分钟 · 中途不能拔线断电")
         bundle_note = WrapLabel(
-            "颜色和菜单文字在相机里是两套东西：颜色写在运行内存的 CP 色度单元里，"
-            "菜单文字写在 /usr 语言资源文件里。实测「一次会话里既写 CP 单元又写 145 KB 文件」"
-            "会掉线，所以这里拆成两次连接顺序执行，中间等相机复位（约 1 分钟），"
-            "全程约 2 分钟，中途不要拔线。选一档命名方案点下去，颜色和文字就按同一套对齐。"
+            "颜色和名字在相机里是两套东西。实测一次连起来写会让相机掉线，所以这里拆成两次："
+            "先写颜色，等相机自己复位（约 1 分钟）再写名字，全程约 2 分钟，中途别拔线。"
+            "选一档名字点下去，颜色和名字就按同一套对齐。"
         )
         bundle_note.setObjectName("Muted")
         self.bundle_card.add(bundle_note)
+        warn = WrapLabel(
+            "这一步改的是相机固件里的文件，不是 SD 卡。0.3.5 写坏过一次菜单名字，2026-10-26 又有一台"
+            "相机因为写错位置变成黑屏、开不了机，两次都只能靠硬件手段救回来，所以这个按钮默认锁着，"
+            "勾下面的确认才解开。"
+        )
+        warn.setWordWrap(True)
+        warn.setStyleSheet(f"color: {theme.DANGER};")
+        self.bundle_card.add(warn)
+        rules = WrapLabel(
+            "写入过程中绝对不能做：拔数据线、关相机、拔电池或断电、让电脑睡眠 / 休眠 / 关机、"
+            "切走 USB 模式。任何一步被打断，相机都可能连不上电脑、重复重启变砖。"
+        )
+        rules.setWordWrap(True)
+        rules.setStyleSheet(f"color: {theme.DANGER}; font-weight: 600;")
+        self.bundle_card.add(rules)
+        self.bundle_ack = LabeledCheck("我知道这一步会改相机固件里的文件，写入途中不能拔线、断电、关相机；被打断可能变砖，仍然要解锁")
+        self.bundle_ack.toggled.connect(self._bundle_unlock)
+        self.bundle_card.add(self.bundle_ack)
         bundle_row = QHBoxLayout()
         bundle_row.setSpacing(8)
         caption = QLabel("将写入")
@@ -82,54 +126,54 @@ class LooksPage(Page):
         self.bundle_preset_label = QLabel("")
         bundle_row.addWidget(self.bundle_preset_label)
         bundle_row.addStretch(1)
-        self.bundle_restore_button = QPushButton("一次还原（颜色 + 文字）")
+        self.bundle_restore_button = QPushButton("一次还原（颜色 + 名字）")
         self.bundle_restore_button.setObjectName("Ghost")
-        self.bundle_restore_button.setToolTip("先把颜色写回出厂记录，再把语言资源写回基线；两段各连一次相机。")
+        self.bundle_restore_button.setToolTip("先把颜色改回出厂，再把菜单名字改回原来的；两段各连一次相机。")
         self.bundle_restore_button.clicked.connect(self._bundle_restore)
         bundle_row.addWidget(self.bundle_restore_button)
-        self.bundle_apply_button = QPushButton("一次写入（颜色 + 名字）")
-        self.bundle_apply_button.setObjectName("Primary")
-        self.bundle_apply_button.setToolTip("颜色按四条配方写、菜单文字按当前命名方案写，分两次连接，约 2 分钟。")
+        self.bundle_apply_button = QPushButton("一次做完（颜色 + 名字）")
+        self.bundle_apply_button.setObjectName("Ghost")
+        self.bundle_apply_button.setEnabled(False)
+        self.bundle_apply_button.setToolTip("锁着：先勾上上面的确认。它会改相机固件里的文件。")
         self.bundle_apply_button.clicked.connect(self._bundle_apply)
         bundle_row.addWidget(self.bundle_apply_button)
         self.bundle_card.add_layout(bundle_row)
         self.root.addWidget(self.bundle_card)
 
-        self.restore_card = Card("能不能无损还原")
-        verdict = WrapLabel("能：四条颜色记录逐字节写回出厂值，不留下任何固件改动。")
+        self.restore_card = Card("改坏了能改回来吗")
+        verdict = WrapLabel("能：这 4 个外观的颜色逐字节写回出厂值，不留下固件改动。")
         verdict.setObjectName("Verdict")
         self.restore_card.add(verdict)
         self._facts(self.restore_card, (
-            ("还原做什么", "把 bank 1 / 4 / 6 / 14 写回配方文件里的出厂 64 字节（factory_hex），"
-                     "随后整单元回读校验；其余 28 条记录一个字节都不动。"),
-            ("不写什么", "全程只写 CP 运行时单元，不碰任何固件分区（/cp、/usr、appFw 都不写），"
-                    "所以不存在刷坏固件的风险，也不需要固件包。"),
-            ("怎么算完成", "点「还原本页外观」→ 再点「检测当前状态」，四条都显示「出厂外观」→ "
-                     "正常关机一次再开机（相机会在关机时把当前 RAM 写进 /setting/BACKUP.BIN）。"),
-            ("什么会白做", "写入或还原后直接拔电池、断电，RAM 会丢回上一次落盘的副本，"
-                     "开机看到的仍是旧状态。"),
+            ("还原做什么", "把这 4 个外观的颜色逐字节写回出厂值，写完再读一遍核对；"
+                     "其它记录一个字节都不动。"),
+            ("不写什么", "「还原颜色」不碰固件分区，刷不坏固件，也不需要固件包。"
+                    "注意上面「一次做完」里的名字是另一条路：它确实会改固件里的文件。"),
+            ("怎么算完成", "点「还原颜色」→ 再点「检查现状」，4 个都显示「出厂外观」→ "
+                     "正常关机一次再开机（相机会在关机时把当前状态存下来）。"),
+            ("什么会白做", "写完或还原后直接拔电池、断电，改动会丢掉，"
+                     "开机看到的还是旧样子。"),
         ))
         self.root.addWidget(self.restore_card)
 
-        self.fit_card = Card("拟合到什么程度")
+        self.fit_card = Card("和原厂有多像")
         self._facts(self.fit_card, (
-            ("参考数据", "A7C2 项目的 19 张真实直出对照图（6 个场景 × 3 组四宫格，"
-                    "只做过缩放与拼接，没有任何曝光、白平衡或色彩调整）。"),
-            ("做法", "每个外观按 12 个 30° 色相档取色度中位数，与本机同场景样张对齐，再用"
-                 "「基底记录 × 系数 + 第 2 组 (Cb,Cr) 缩放」拟合。RMS 是 12 档「实测 / 目标」的"
-                 "均方根误差，越低越接近。"),
-            ("结果", "CC 0.183、NC 0.173（中段八档误差 0.03–0.09）；PF 0.189、NF 0.330 —— "
+            ("拿来对照的样张", "A7C2 项目的 19 张真实直出样张（6 个场景 × 3 组），"
+                    "只做过缩放和拼接，没有调过曝光、白平衡或颜色。"),
+            ("怎么凑出来的", "按 12 个色相档取中间值，跟同一场景的样张对齐，再拟合出一组参数。"
+                 "下面的「误差」就是这 12 档实测值和目标值的平均偏差，越小越接近。"),
+            ("凑得怎么样", "CC 0.183、NC 0.173（中间八档 0.03–0.09）；PF 0.189、NF 0.330 —— "
                  "PF / NF 只做到低饱和近似，不是逐像素复刻。"),
-            ("硬边界", "① 蓝端 0–30° 与 330–360° 压不下来（CC 实测 0.95 / 1.06，目标 0.77 / 0.53）；"
-                  "② 本机型只有 12 组 (Cb,Cr) 和一个宽把手，做不出 NC 的窄品红缺口与 PF / NF 的局部反向；"
-                  "③ 富士的 S 形影调曲线没有对应图层，只复刻颜色浓度与色相分布。"),
+            ("做不到的地方", "① 蓝色那一端压不下来（CC 实测 0.95 / 1.06，目标 0.77 / 0.53）；"
+                  "② 这台机器能调的参数不够，做不出 NC 那条窄的品红缺口，也做不出 PF / NF 的局部反向；"
+                  "③ 富士的明暗过渡没有对应项，只复刻了颜色。"),
         ))
         self.root.addWidget(self.fit_card)
 
-        self.state_card = Card("当前状态", "读取 CP 色度单元 0x02A40001")
+        self.state_card = Card("现在的样子", "连上相机读一次就能看到")
         self.pills = QHBoxLayout()
         self.pills.setSpacing(8)
-        self.pill_camera = Pill("尚未检测")
+        self.pill_camera = Pill("还没检查")
         self.pill_dirty = Pill("")
         self.pills.addWidget(self.pill_camera)
         self.pills.addWidget(self.pill_dirty)
@@ -139,53 +183,31 @@ class LooksPage(Page):
         self.rows_box = QVBoxLayout()
         self.rows_box.setSpacing(10)
         self.state_card.add_layout(self.rows_box)
-        self.empty = QLabel("点击下面的「检测当前状态」读取相机。")
+        self.empty = QLabel("点下面的「检查现状」，连上相机读一次。")
         self.empty.setObjectName("Muted")
         self.rows_box.addWidget(self.empty)
         self.rows: dict[str, dict] = {}
         self.root.addWidget(self.state_card)
 
-        # ------------------------------------------------------------ 菜单文字
-        self.names_card = Card("菜单文字", "改写 /usr 语言资源里的外观短名，可逐字节还原")
+        # ------------------------------------------------------------ 菜单名字
+        self.names_card = Card("菜单名字", "改相机菜单里显示的外观名字，可以逐字节改回来")
         names_note = WrapLabel(
-            "颜色是运行时的数据，关机才落盘；菜单文字是固件里的一个文件，写下去就持久。"
-            "所以这一步单独算：写入前程序会把整份语言资源（约 142 KB）存一份基线，"
-            "还原时整份逐字节写回并比对哈希。本地没有基线时只能把文字改回出厂短名"
-            "（PT / NT / VV / VV2）—— 下面的「基线」一行会说明当前能用到哪一档。"
-            "叫法有两套可选：官方原名（Classic Chrome / Classic Neg. / Positive Film / "
-            "Negative Film）和中文简称，写哪一套都还原得回来。"
+            "名字和颜色不一样：写进去就一直留在相机里，关机也不掉。所以程序写之前会把相机里"
+            "原来的文字整份存一份（约 142 KB），还原时整份写回并核对；本地没有这份底稿时，"
+            "只能把名字改回出厂短名（PT / NT / VV / VV2）——下面「底稿」一行会说明现在能用到"
+            "哪一档。写哪一套叫法（上面选的英文原名或中文简称）都能改回来。"
         )
         names_note.setObjectName("Muted")
         self.names_card.add(names_note)
-
-        preset_row = QHBoxLayout()
-        preset_row.setSpacing(8)
-        preset_caption = QLabel("命名方案")
-        preset_caption.setObjectName("Faint")
-        preset_row.addWidget(preset_caption)
-        self.names_preset_box = QComboBox()
-        for item in looknames.preset_labels():
-            self.names_preset_box.addItem(item["label"], item["key"])
-        self.names_preset_box.setToolTip("只影响「菜单文字」写成哪一套叫法，颜色记录不受影响。")
-        current = self.names_preset_box.findData(self.names_preset)
-        self.names_preset_box.setCurrentIndex(max(0, current))
-        self.names_preset_box.currentIndexChanged.connect(self._preset_changed)
-        preset_row.addWidget(self.names_preset_box)
-        self.preset_hint = QLabel("")
-        self.preset_hint.setObjectName("Faint")
-        preset_row.addWidget(self.preset_hint)
-        preset_row.addStretch(1)
-        self.names_card.add_layout(preset_row)
-        self._sync_preset_hint()
 
         self.names_card.add(Divider())
         self.names_card.add_layout(self._names_table())
         baseline_row = QHBoxLayout()
         baseline_row.setSpacing(8)
-        caption = QLabel("基线")
+        caption = QLabel("底稿")
         caption.setObjectName("Faint")
         baseline_row.addWidget(caption)
-        self.baseline_pill = Pill("尚未检查")
+        self.baseline_pill = Pill("还没检查")
         baseline_row.addWidget(self.baseline_pill)
         self.baseline_detail = QLabel("")
         self.baseline_detail.setObjectName("Faint")
@@ -194,15 +216,15 @@ class LooksPage(Page):
         self.names_card.add_layout(baseline_row)
         name_actions = QHBoxLayout()
         name_actions.setSpacing(10)
-        self.names_import_button = QPushButton("导入基线…")
+        self.names_import_button = QPushButton("导入底稿…")
         self.names_import_button.setObjectName("Ghost")
         self.names_import_button.clicked.connect(self._import_baseline)
         name_actions.addWidget(self.names_import_button)
         name_actions.addStretch(1)
-        self.names_restore_button = QPushButton("还原菜单文字")
+        self.names_restore_button = QPushButton("把名字改回去")
         self.names_restore_button.clicked.connect(self._restore_names)
         name_actions.addWidget(self.names_restore_button)
-        self.names_apply_button = QPushButton("写入菜单文字")
+        self.names_apply_button = QPushButton("写入名字")
         self.names_apply_button.setObjectName("Primary")
         self.names_apply_button.clicked.connect(self._apply_names)
         name_actions.addWidget(self.names_apply_button)
@@ -212,14 +234,14 @@ class LooksPage(Page):
         actions = QHBoxLayout()
         actions.setSpacing(10)
         actions.addStretch(1)
-        self.detect_button = QPushButton("检测当前状态")
+        self.detect_button = QPushButton("检查现状")
         self.detect_button.setObjectName("Ghost")
         self.detect_button.clicked.connect(self._detect)
         actions.addWidget(self.detect_button)
-        self.restore_button = QPushButton("还原本页外观")
+        self.restore_button = QPushButton("还原颜色")
         self.restore_button.clicked.connect(self._restore)
         actions.addWidget(self.restore_button)
-        self.apply_button = QPushButton("写入配方")
+        self.apply_button = QPushButton("写入颜色")
         self.apply_button.setObjectName("Primary")
         self.apply_button.clicked.connect(self._apply)
         actions.addWidget(self.apply_button)
@@ -252,39 +274,31 @@ class LooksPage(Page):
         table = QGridLayout()
         table.setHorizontalSpacing(20)
         table.setVerticalSpacing(8)
-        for column, text in enumerate(("相机菜单槽位", "改写为", "颜色记录", "拟合 RMS")):
+        for column, text in enumerate(("相机里的外观", "改成", "误差")):
             head = QLabel(text)
             head.setObjectName("Faint")
-            if column >= 2:
-                head.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
             table.addWidget(head, 0, column)
         try:
             items = looks_mod.profile()
         except looks_mod.LooksError:
             items = []
         for row, item in enumerate(items, start=1):
-            slot = QLabel(str(item.get("slot") or item.get("menu") or ""))
-            slot.setStyleSheet("font-weight: 600;")
-            table.addWidget(slot, row, 0)
+            table.addWidget(QLabel(str(item.get("slot") or item.get("menu") or "")), row, 0)
             table.addWidget(QLabel(str(item.get("label") or item["name"])), row, 1)
-            bank = QLabel(f"bank {item['bank']}")
-            bank.setObjectName("Faint")
-            bank.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            table.addWidget(bank, row, 2)
             rms = item.get("rms")
-            fit = QLabel(f"RMS {rms:.3f}" if isinstance(rms, (int, float)) else "近似")
+            fit = QLabel(f"{rms:.3f}" if isinstance(rms, (int, float)) else "近似")
             fit.setObjectName("Faint")
             fit.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            table.addWidget(fit, row, 3)
+            table.addWidget(fit, row, 2)
         table.setColumnStretch(1, 1)
         return table
 
     def _names_table(self) -> QGridLayout:
-        """菜单文字的四行：槽位、相机上现在显示什么、要写成什么、状态。"""
+        """菜单名字的四行：槽位、相机上现在显示什么、要写成什么、状态。"""
         table = QGridLayout()
         table.setHorizontalSpacing(20)
         table.setVerticalSpacing(8)
-        for column, text in enumerate(("相机菜单槽位", "当前文字", "目标文字", "")):
+        for column, text in enumerate(("相机里的外观", "现在是", "改成", "")):
             head = QLabel(text)
             head.setObjectName("Faint")
             table.addWidget(head, 0, column)
@@ -297,7 +311,7 @@ class LooksPage(Page):
             slot = QLabel(str(row.get("label") or row["slot"]))
             slot.setStyleSheet("font-weight: 600;")
             table.addWidget(slot, index, 0)
-            current = QLabel("未检测")
+            current = QLabel("还没读")
             current.setObjectName("Muted")
             current.setMinimumWidth(150)
             table.addWidget(current, index, 1)
@@ -310,7 +324,7 @@ class LooksPage(Page):
                                            "variants": row.get("variants") or {}}
         table.setColumnStretch(1, 1)
         if not rows:
-            missing = QLabel("读不到 docs/looks-profile.json 里的 menu_slot / menu_names。")
+            missing = QLabel("程序里的外观清单读不出来——文件可能损坏或被改过。")
             missing.setObjectName("Warning")
             table.addWidget(missing, 1, 0, 1, 4)
         return table
@@ -320,7 +334,7 @@ class LooksPage(Page):
         self.preset_hint.setText(str(meta.get("note") or ""))
         if hasattr(self, "bundle_preset_label"):
             self.bundle_preset_label.setText(
-                f"颜色四条配方 + 菜单文字「{meta.get('label') or self.names_preset}」")
+                f"颜色 4 个 + 菜单名字「{meta.get('label') or self.names_preset}」")
 
     def _preset_changed(self, _index: int) -> None:
         key = str(self.names_preset_box.currentData() or looknames.DEFAULT_PRESET)
@@ -333,8 +347,8 @@ class LooksPage(Page):
             pass
         self._sync_preset_hint()
         self._render_names()
-        self.log.log(f"命名方案切成「{(looknames.PRESETS.get(key) or {}).get('label', key)}」；"
-                     "点「写入菜单文字」才会真正改写。")
+        self.log.log(f"名字改成「{(looknames.PRESETS.get(key) or {}).get('label', key)}」；"
+                     "点「写入名字」才会真正改到相机上。")
 
     def _preset_target(self, row: dict) -> str:
         variants = row.get("variants") or {}
@@ -360,7 +374,7 @@ class LooksPage(Page):
         simulation = bool(snapshot.get("simulation"))
         busy = bool(snapshot.get("busy"))
         if report is None:
-            self.pill_camera.set_state("尚未检测", theme.TEXT_FAINT)
+            self.pill_camera.set_state("还没检查", theme.TEXT_FAINT)
             self.pill_dirty.set_state("", theme.TEXT_FAINT)
         else:
             installed = sum(1 for row in report.get("looks", []) if row.get("state") == "installed")
@@ -368,31 +382,40 @@ class LooksPage(Page):
                 f"已写入 {installed}/{len(report.get('looks', []))}", theme.SUCCESS if installed else theme.TEXT_MUTED)
             moved = report.get("moved") or []
             self.pill_dirty.set_state(
-                f"其它记录有变化：bank {moved}" if moved else "其它记录未被改动",
+                f"别的记录也被改过：{moved}" if moved else "其它记录没动",
                 theme.WARNING if moved else theme.TEXT_FAINT)
             self._render_rows(report.get("looks") or [])
         self._render_names()
         enabled = not busy and not simulation
         for button in (self.apply_button, self.restore_button, self.detect_button,
                        self.names_apply_button, self.names_restore_button, self.names_import_button,
-                       self.bundle_apply_button, self.bundle_restore_button):
+                       self.bundle_restore_button):
             button.setEnabled(enabled)
+        # 「一次写入」是这一页唯一会写 /usr 固件侧文件的按钮，中途断掉会停在半截：
+        # 默认锁着，必须先勾上面那句确认（见 _bundle_unlock）。
+        self._bundle_ready = enabled
+        self.bundle_ack.box.setEnabled(enabled)
+        unlocked = self.bundle_ack.box.isChecked()
+        self.bundle_apply_button.setEnabled(enabled and unlocked)
         if simulation:
             hint = "演示模式下不会接触相机，请用真实设备模式。"
         else:
-            hint = "需要相机处于 USB 存储（MSC）模式。"
+            hint = "需要相机处于海量存储（MSC）模式。"
         self.bundle_apply_button.setToolTip(
-            hint if simulation else "颜色按四条配方写、菜单文字按当前命名方案写；两次连接，约 2 分钟。")
+            hint if simulation else
+            ("颜色和名字一起写：两次连接，中间等相机自己复位，约 2 分钟。"
+             if unlocked else
+             "锁着：先勾上上面的确认。它会改相机固件里的文件。"))
         self.bundle_restore_button.setToolTip(
-            hint if simulation else "颜色写回出厂记录、语言资源写回基线；两次连接，约 2 分钟。")
-        self.apply_button.setToolTip(hint if simulation else "写入四条色度记录并回读校验。")
-        self.restore_button.setToolTip(hint if simulation else "把这四条记录还回出厂值，其它记录不动。")
-        self.detect_button.setToolTip(hint if simulation else "只读读取，不改任何东西。")
+            hint if simulation else "颜色改回出厂、名字改回原来的；两次连接，约 2 分钟。")
+        self.apply_button.setToolTip(hint if simulation else "写入 4 个外观的颜色，写完读回来核对。")
+        self.restore_button.setToolTip(hint if simulation else "把这 4 个外观的颜色改回出厂值，其它记录不动。")
+        self.detect_button.setToolTip(hint if simulation else "只看不改。")
         self.names_apply_button.setToolTip(
-            hint if simulation else "把四条外观的菜单文字改成当前命名方案（写 /usr 文件，持久）。")
+            hint if simulation else "把菜单里的名字改成选中的那一套（会改相机固件里的文件，写完就留着）。")
         self.names_restore_button.setToolTip(
-            hint if simulation else "有出厂基线就整份写回；没有就只把文字改回出厂短名。")
-        self.names_import_button.setToolTip("导入一份出厂语言资源作为基线；不连接相机。")
+            hint if simulation else "有底稿就整份写回；没有就只把名字改回出厂短名。")
+        self.names_import_button.setToolTip("导入一份出厂文字文件当底稿；不用连相机。")
 
     def _render_rows(self, rows: list[dict]) -> None:
         known = list(self.rows)
@@ -413,11 +436,8 @@ class LooksPage(Page):
                 menu.setMinimumWidth(300)
                 menu.setStyleSheet("font-weight: 600;")
                 grid.addWidget(menu, 0, 0)
-                bank = QLabel(f"bank {row.get('bank')}")
-                bank.setObjectName("Faint")
-                grid.addWidget(bank, 0, 1)
                 rms = row.get("rms")
-                fit = QLabel(f"RMS {rms:.3f}" if isinstance(rms, (int, float)) else "")
+                fit = QLabel(f"误差 {rms:.3f}" if isinstance(rms, (int, float)) else "")
                 fit.setObjectName("Faint")
                 grid.addWidget(fit, 0, 2)
                 pill = Pill("")
@@ -437,13 +457,13 @@ class LooksPage(Page):
         report = self.names_report
         if report is None:
             for holder in self.name_rows.values():
-                holder["current"].setText("读取失败" if self.names_error else "未检测")
+                holder["current"].setText("读不出来" if self.names_error else "还没读")
                 holder["pill"].set_state("", theme.TEXT_FAINT)
             if self.names_error:
-                self.baseline_pill.set_state("读取失败", theme.WARNING)
+                self.baseline_pill.set_state("读不出来", theme.WARNING)
                 self.baseline_detail.setText(self.names_error)
             else:
-                self.baseline_pill.set_state("尚未检查", theme.TEXT_FAINT)
+                self.baseline_pill.set_state("还没检查", theme.TEXT_FAINT)
                 self.baseline_detail.setText("")
             return
         by_slot = {str(row.get("slot")): row for row in report.get("looks") or []}
@@ -463,17 +483,56 @@ class LooksPage(Page):
         baseline = report.get("baseline") or {}
         best = baseline.get("best") or {}
         if best:
-            kind = KIND_TEXT.get(str(best.get("kind")), "基线")
+            kind = KIND_TEXT.get(str(best.get("kind")), "底稿")
             self.baseline_pill.set_state("可整份还原", theme.SUCCESS)
             self.baseline_detail.setText(
                 f"{kind} · {int(best.get('bytes') or 0):,} 字节 · 存于 {best.get('saved_at') or ''}"
                 f" · sha256 {str(best.get('sha256') or '')[:12]}…")
         else:
-            self.baseline_pill.set_state("无出厂基线：只能改回短名", theme.WARNING)
+            self.baseline_pill.set_state("无出厂底稿：只能改回短名", theme.WARNING)
             self.baseline_detail.setText(
                 f"共 {baseline.get('count') or 0} 份 · {baseline.get('dir') or ''}")
 
     # ---------------------------------------------------------------- 动作
+    def _write_targets(self, action: str) -> list[str]:
+        """确认框里的三行硬信息：写哪个分区、多少字节、靠什么回滚。"""
+        both = action.startswith("一次做完")
+        wants_color = both or action == "写入颜色"
+        lines: list[str] = []
+        if wants_color:
+            lines.append("写哪里：相机机身里的颜色参数区，不是 SD 卡；关机时相机自己把它写进 "
+                         + COLOR_PERSIST)
+            lines.append(f"多少字节：改 {COLOR_RECORDS} 条记录、共 "
+                         f"{COLOR_RECORDS * COLOR_RECORD_BYTES} 字节，整块 {COLOR_UNIT_BYTES:,} 字节一起重写")
+            lines.append("怎么回滚：同一页「还原颜色」把这 4 个外观逐字节写回出厂值，"
+                         "前提是相机还能开机、插上数据线还能认出海量存储器（MSC）模式")
+        if both or not wants_color:
+            size = int((self.names_report or {}).get("bytes") or 0)
+            amount = f"整份 {size:,} 字节" if size else "整份约 14.5 万字节"
+            lines.append("写哪里：机身固件分区里的简体中文文字包 " + looknames.BLOB_PATH + "，不是 SD 卡")
+            lines.append(f"多少字节：{amount}，分块写入，写完逐块读回来核对")
+            lines.append("怎么回滚：同一页「把名字改回去」，按本地存的出厂底稿整份写回，"
+                         "前提是底稿还在、相机还能开机、插上数据线还能认出海量存储器（MSC）模式")
+        return lines
+
+    def _confirm_write(self, action: str) -> bool:
+        """写入前的最后一道门：先摊开写哪里、多少字节、怎么回滚，再摆一次中断后果。"""
+        targets = "\n".join("· " + line for line in self._write_targets(action))
+        text = (f"「{action}」\n{targets}\n\n"
+                "中断后果：写到一半被打断，相机可能连不上电脑、重复重启变砖，"
+                "只能拔电池等满 1 分钟再试；仍然黑屏就只剩硬件恢复。\n"
+                f"写入过程中绝对不能做：{WRITE_RULES}。\n\n"
+                "准备好了再点「知道了，开始」。")
+        ask = getattr(self.app, "confirm_write", None)
+        if callable(ask):
+            return bool(ask(action, text))
+        box = QMessageBox(QMessageBox.Warning, "开始前再确认一次", text,
+                          QMessageBox.Cancel | QMessageBox.Ok, self)
+        box.setDefaultButton(QMessageBox.Cancel)
+        box.button(QMessageBox.Ok).setText("知道了，开始")
+        box.button(QMessageBox.Cancel).setText("先不写")
+        return box.exec() == QMessageBox.Ok
+
     def _release_controller_session(self) -> None:
         """同一台相机只能有一个 USB 会话；外观读写会自己重连，先把旧会话退掉。"""
         controller = getattr(self.app, "controller", None)
@@ -489,14 +548,14 @@ class LooksPage(Page):
         self.app.run_task("检测外观状态", self._probe, self._detected)
 
     def _probe(self, progress) -> dict:
-        """一次认证同时读颜色与菜单文字（两次认证会让相机来回切模式）。"""
+        """一次认证同时读颜色与菜单名字（两次认证会让相机来回切模式）。"""
         with cp.session(progress) as channel:
             colors = looks_mod.read_state(progress, channel=channel)
             names = None
             error = None
             try:
                 names = looknames.read(progress, channel=channel, preset=self.names_preset)
-            except Exception as exc:  # noqa: BLE001 - 文字读取失败不影响颜色结果
+            except Exception as exc:  # noqa: BLE001 - 文字读取失败不影响颜色凑得怎么样
                 error = str(exc)
         return {"colors": colors, "names": names, "names_error": error}
 
@@ -508,19 +567,22 @@ class LooksPage(Page):
         self.names_error = result.get("names_error")
         rows = (colors or {}).get("looks") or []
         installed = sum(1 for row in rows if row.get("state") == "installed")
-        self.log.log(f"检测完成：{installed}/{len(rows)} 个外观已写入配方。")
+        self.log.log(f"检查完成：{installed}/{len(rows)} 个外观已经是改过的颜色。")
         moved = (colors or {}).get("moved") or []
         if moved:
-            self.log.log(f"注意：这些记录不是出厂值：bank {moved}")
+            self.log.log(f"注意：这几条也不是出厂值了：{moved}")
         if self.names_error:
-            self.log.log(f"菜单文字读取失败：{self.names_error}")
+            self.log.log(f"菜单名字没读出来：{self.names_error}")
         elif self.names_report:
             kind = KIND_TEXT.get(str(self.names_report.get("kind")), "未知")
-            self.log.log(f"语言资源 {int(self.names_report.get('bytes') or 0):,} 字节，"
-                         f"当前是「{kind}」。")
+            self.log.log(f"名字文件 {int(self.names_report.get('bytes') or 0):,} 字节，"
+                         f"现在是「{kind}」。")
         self.app.refresh()
 
     def _apply(self) -> None:
+        if not self._confirm_write("写入颜色"):
+            self.log.log("先不写：这次什么都没动。")
+            return
         self._release_controller_session()
         self.app.run_task("写入自定义外观", lambda progress: looks_mod.apply(progress),
                           lambda report: self._written(report, restoring=False))
@@ -533,36 +595,50 @@ class LooksPage(Page):
     def _written(self, report, restoring: bool = False) -> None:
         rows = (report or {}).get("looks") or []
         parts = [f"{row.get('name')}={STATE_TEXT.get(str(row.get('state')), ('未知',))[0]}" for row in rows]
-        self.log.log("结果：" + "，".join(parts))
+        self.log.log("现在的样子：" + "，".join(parts))
         moved = (report or {}).get("moved") or []
         if moved:
-            self.log.log(f"注意：这些与本页无关的记录也变了：bank {moved}")
+            self.log.log(f"注意：这几条跟本页无关，但也变了：{moved}")
         if (report or {}).get("wrote"):
             if restoring:
-                self.log.log("已还原并回读通过。请正常关机一次，再开机让相机把它写进 BACKUP.BIN。")
+                self.log.log("已还原，读回来核对过了。请正常关机一次，再开机让相机把它存下来。")
             else:
-                self.log.log("写入并回读通过。请正常关机一次，让它写进 BACKUP.BIN，再开机确认。")
+                self.log.log("已写入，读回来核对过了。请正常关机一次再开机确认。")
         elif restoring:
-            self.log.log("四条记录已经是出厂状态，本次没有写入。")
+            self.log.log("4 条记录已经是出厂状态，这次没有写入。")
         else:
-            self.log.log("四条记录已经是目标状态，本次没有写入。")
+            self.log.log("4 条记录已经是目标状态，这次没有写入。")
         self._detect()
 
+    def _bundle_unlock(self, value: bool) -> None:
+        """「一次写入」的确认门：勾上才解锁，取消立刻锁回去。"""
+        ready = bool(getattr(self, "_bundle_ready", False))
+        self.bundle_apply_button.setEnabled(ready and bool(value))
+        if value:
+            self.log.log("已解锁「一次做完」：它会改相机固件里的文件，每写一次都要重新确认。")
+
     def _bundle_apply(self) -> None:
+        if not self.bundle_ack.box.isChecked():
+            self.log.log("「一次做完」还锁着：先勾上上面的确认，再点一次。")
+            return
+        if not self._confirm_write("一次做完（颜色 + 名字）"):
+            self.log.log("先不写：这次什么都没动。")
+            return
         self._release_controller_session()
         preset = self.names_preset
         label = (looknames.PRESETS.get(preset) or {}).get("label", preset)
-        self.log.log(f"一次写入：颜色 + 菜单文字（{label}）。分两次连接，中间会等相机复位，"
-                     "大约 2 分钟，中途不要拔线。")
-        self.app.run_task("一次写入（颜色 + 名字）",
+        self.log.log(f"一次做完：颜色 + 名字（{label}）。分两次连接，中间等相机自己复位，"
+                     "大约 2 分钟，中途别拔线。")
+        self.app.run_task("一次做完（颜色 + 名字）",
                           lambda progress: bundle.apply(progress, preset=preset),
                           lambda report: self._bundle_done(report, restoring=False))
+        self.bundle_ack.setChecked(False)  # 每写一次都要重新确认，不留在解锁状态
 
     def _bundle_restore(self) -> None:
         self._release_controller_session()
         preset = self.names_preset
-        self.log.log("一次还原：颜色 + 菜单文字。同样分两次连接，中间会等相机复位。")
-        self.app.run_task("一次还原（颜色 + 文字）",
+        self.log.log("一次还原：颜色 + 名字。同样分两次连接，中间等相机自己复位。")
+        self.app.run_task("一次还原（颜色 + 名字）",
                           lambda progress: bundle.restore(progress, preset=preset),
                           lambda report: self._bundle_done(report, restoring=True))
 
@@ -575,7 +651,7 @@ class LooksPage(Page):
             if rows:
                 parts = [f"{row.get('name')}={STATE_TEXT.get(str(row.get('state')), ('未知',))[0]}"
                          for row in rows]
-                self.log.log("颜色结果：" + "，".join(parts))
+                self.log.log("颜色现在的样子：" + "，".join(parts))
         if report.get("names"):
             self.names_report = report.get("names")
             self.names_error = None
@@ -585,35 +661,38 @@ class LooksPage(Page):
         if names:
             preset = (looknames.PRESETS.get(str(names.get("preset") or "")) or {}).get("label")
             if preset:
-                self.log.log(f"菜单文字按「{preset}」写入完成。")
+                self.log.log(f"菜单名字已按「{preset}」写进去。")
             for change in (names.get("changes") or [])[:8]:
                 self.log.log(f"  0x{change['rid']:08x}：{change['old']!r} → {change['new']!r}")
         if not report.get("error"):
             if report.get("wrote"):
                 if restoring:
-                    self.log.log("两段都已回读通过：颜色和文字都回到出厂状态。"
-                                 "颜色要等正常关机再开机才写进 BACKUP.BIN。")
+                    self.log.log("两段都读回来核对过：颜色和名字都回到出厂状态。"
+                                 "颜色要正常关机再开机才真正存住。")
                 else:
-                    self.log.log("两段都已回读通过。颜色要正常关机再开机才写进 BACKUP.BIN；"
-                                 "菜单文字退出 USB 后开机就能看到。")
+                    self.log.log("两段都读回来核对过。颜色要正常关机再开机才真正存住；"
+                                 "菜单名字退出 USB 后开机就能看到。")
             else:
-                self.log.log("两段内容都已是目标状态，本次没有写入。")
+                self.log.log("两段内容都已经是目标状态，这次没有写入。")
         self.app.refresh()
         self._detect()
 
     def _apply_names(self) -> None:
+        if not self._confirm_write("写入菜单名字"):
+            self.log.log("先不写：这次什么都没动。")
+            return
         preset = self.names_preset
         label = (looknames.PRESETS.get(preset) or {}).get("label", preset)
         self._release_controller_session()
-        self.log.log(f"按「{label}」写入菜单文字…")
-        self.app.run_task("写入菜单文字",
+        self.log.log(f"按「{label}」写入菜单名字…")
+        self.app.run_task("写入菜单名字",
                           lambda progress: looknames.apply(progress, preset=preset),
                           lambda report: self._names_done(report, "写入"))
 
     def _restore_names(self) -> None:
         preset = self.names_preset
         self._release_controller_session()
-        self.app.run_task("还原菜单文字",
+        self.app.run_task("还原菜单名字",
                           lambda progress: looknames.restore(progress, preset=preset),
                           lambda report: self._names_done(report, "还原"))
 
@@ -624,19 +703,19 @@ class LooksPage(Page):
         changes = report.get("changes") or []
         chosen = (looknames.PRESETS.get(str(report.get("preset") or "")) or {}).get("label")
         if chosen:
-            self.log.log(f"命名方案：{chosen}。")
+            self.log.log(f"名字用哪一套：{chosen}。")
         if report.get("wrote"):
-            self.log.log(f"{action}并整份回读通过：{len(changes)} 条记录，"
-                         f"现在 {int(report.get('bytes') or 0):,} 字节。")
+            self.log.log(f"{action}完成，整份读回来核对过：{len(changes)} 条记录，"
+                         f"共 {int(report.get('bytes') or 0):,} 字节。")
             if action == "写入":
-                self.log.log("菜单文字已生效：正常退出 USB 后开机就能看到新名字（这类改动不需要关机写盘）。")
+                self.log.log("菜单名字已生效：正常退出 USB 再开机就能看到新名字（这类改动不用关机写盘）。")
             elif report.get("mode") == "baseline":
-                self.log.log("已用出厂基线整份写回，回读哈希与基线一致，属于逐字节还原。")
+                self.log.log("用出厂底稿整份写回，读回来和底稿一模一样，属于逐字节还原。")
             elif report.get("mode") == "labels-factory":
-                self.log.log("没有现成基线，但短名回写后的哈希与出厂资源一致——已经按出厂基线登记，"
+                self.log.log("本地没有底稿，但写回短名之后和出厂文件一致——已按出厂底稿登记，"
                              "这次是逐字节还原。")
             else:
-                self.log.log("没有出厂基线，只把文字改回了出厂短名；文件字节与出厂不完全相同，"
+                self.log.log("没有出厂底稿，只把文字改回了出厂短名；文件字节与出厂不完全相同，"
                              "但菜单显示已恢复。")
         else:
             self.log.log(f"{action}：相机上的内容已是目标状态，本次没有写入。")
@@ -654,7 +733,7 @@ class LooksPage(Page):
         except looknames.LookNamesError as exc:
             self.log.log(f"导入失败：{exc}")
             return
-        self.log.log(f"已导入基线：{KIND_TEXT.get(str(item.get('kind')), '基线')} · "
+        self.log.log(f"底稿已导入：{KIND_TEXT.get(str(item.get('kind')), '底稿')} · "
                      f"{int(item.get('bytes') or 0):,} 字节 · sha256 {str(item.get('sha256'))[:12]}…")
         self.baseline_pill.set_state("可整份还原", theme.SUCCESS)
         self.baseline_detail.setText(f"已导入 {item.get('file')}（{item.get('saved_at')}）")

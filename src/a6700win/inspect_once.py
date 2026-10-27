@@ -15,7 +15,7 @@ def _say(message: str) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    from . import app, paths, patches
+    from . import app, diagnostics, paths, patches
 
     paths.ensure_vendor_on_path()
     args = list(sys.argv[1:] if argv is None else argv)
@@ -49,6 +49,9 @@ def main(argv: list[str] | None = None) -> int:
             read_bytes=plan.get("read_bytes", summary.get("read_bytes")),
             changed_bytes=plan.get("changed_bytes"),
             changed_sectors=plan.get("changed_sectors"),
+            run_directory=result.get("run_directory"),
+            issues=list(plan.get("issues") or []),
+            issues_text=diagnostics.issue_lines(plan.get("issues") or []),
             features=[{"id": row.get("id"), "state": row.get("state")} for row in features],
         )
     except Exception as exc:  # noqa: BLE001 - 失败原因要原样带出去

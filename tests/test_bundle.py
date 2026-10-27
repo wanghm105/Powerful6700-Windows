@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""一次写入（颜色 + 菜单文字）的编排测试：不接触相机，只验证两段会话的顺序与失败处理。"""
+"""一次做完（颜色 + 名字）的编排测试：不接触相机，只验证两段会话的顺序与失败处理。"""
 from __future__ import annotations
 
 import pytest
@@ -78,7 +78,7 @@ def test_colors_failure_stops_before_names(monkeypatch, calls):
     monkeypatch.setattr(bundle.looks, "apply", boom)
     with pytest.raises(bundle.BundleError) as caught:
         bundle.apply(preset="official")
-    assert "菜单文字一个字都没动" in str(caught.value)
+    assert "菜单名字一个字都没动" in str(caught.value)
     assert "names" not in calls.names()
 
 
@@ -91,7 +91,7 @@ def test_names_failure_keeps_colors_and_explains(monkeypatch, calls):
     assert report["steps"] == ["colors"]
     assert report["wrote"] is True
     assert "颜色已经写进相机了" in report["error"]
-    assert "还原本页外观" in report["error"]
+    assert "还原颜色" in report["error"]
     assert report["seconds"] >= 0
 
 
@@ -99,7 +99,7 @@ def test_summary_mentions_both_steps(calls):
     report = bundle.apply(preset="official")
     text = "\n".join(bundle.summary(report))
     assert "颜色：CC=已写入" in text
-    assert "菜单文字：改了 1 条记录（官方原名）" in text
+    assert "菜单名字：改了 1 条（官方原名）" in text
 
 
 def test_summary_of_partial_report_has_no_name_lines(monkeypatch, calls):
@@ -108,5 +108,5 @@ def test_summary_of_partial_report_has_no_name_lines(monkeypatch, calls):
                             RuntimeError("boom")))
     report = bundle.apply(preset="zh")
     text = "\n".join(bundle.summary(report))
-    assert "菜单文字" not in text
+    assert "菜单名字" not in text
     assert "颜色：CC=已写入" in text

@@ -151,7 +151,7 @@ def install() -> list[str]:
         wrapped.__name__ = "inspect_sectors"
         wrapped.__doc__ = current.__doc__
         module.inspect_sectors = wrapped
-        applied.append(module.__name__ + ".inspect_sectors")
+        applied.append(module.__name__.rsplit(".", 1)[-1] + ".inspect_sectors")
     if applied:
         _wrapped = True
     return applied
