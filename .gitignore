@@ -35,3 +35,6 @@ unit-*.bin
 *.pfx
 inspect-*.json
 a6700audit-*
+
+# Local AI handoff notes; keep out of public source control
+docs/AI-HANDOFF.md
