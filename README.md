@@ -362,3 +362,7 @@ python tools/looks_apply.py --confirm yes-write   # 相机先切到海量存储�
 - [PySide6](https://www.qt.io/qt-for-python)、[PyUSB](https://github.com/pyusb/pyusb)、[libusb](https://libusb.info/)、[PyInstaller](https://pyinstaller.org/)、[Sony-PMCA-RE](https://github.com/ma1co/Sony-PMCA-RE)。
 
 还有那些愿意把相机插上、把日志贴回来的测试者：每一次反馈都让这个工具更安全一点。
+
+## Star History ⭐
+
+[![Star History Chart](https://api.star-history.com/svg?repos=wanghm105%2FPowerful6700-Windows&type=Date)](https://www.star-history.com/#wanghm105/Powerful6700-Windows&Date)
